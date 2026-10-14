@@ -10,8 +10,8 @@ Unraid server or your computer, as one small program with its database inside.
 
 ![Home: how complete the collection is, one tile per game](docs/screenshots/home.png)
 
-> Completist is in its first version (phase 0 of the [plan](#roadmap)): cartridge systems,
-> DATs, the collection and its counts. Disc systems, compression and renaming come next.
+> Completist is young: cartridge systems, DATs, the collection and its counts are there. Disc
+> systems, compression and renaming come next (see the [roadmap](#roadmap)).
 
 ## What it does
 
@@ -28,7 +28,8 @@ Unraid server or your computer, as one small program with its database inside.
 - **Keeps the DATs up to date**: downloaded from libretro-database and updated every week, or
   imported from your own DAT files (Logiqx XML or clrmamepro).
 - **Looks good**: box art, screenshots, a page for each game with its versions and regions, a
-  dark interface that works on a phone, in English and Spanish.
+  dark interface that works on a phone, in English and Spanish. Each image is downloaded once and
+  kept, so pages load at once, also without internet.
 - **Stays up to date**: Completist notices when files are added, removed or replaced and scans
   again; network shares are checked every two minutes. Unchanged files are not read twice, so
   10,000 files are checked in under a second.
@@ -138,6 +139,7 @@ be reached from the internet.
 | `COMPLETIST_DAT_UPDATE_HOURS` | `168` | How often the downloaded DATs are updated; `0` turns it off |
 | `COMPLETIST_SCAN_WORKERS` | up to 4 | Files read at the same time |
 | `COMPLETIST_DAT_URL` | libretro-database on GitHub | Where the DATs are downloaded from, for a mirror |
+| `COMPLETIST_COVERS_URL` | thumbnails.libretro.com | Where the images are downloaded from, for a mirror |
 | `COMPLETIST_AUTH_USERNAME`, `COMPLETIST_AUTH_PASSWORD` | | An administrator |
 | `COMPLETIST_ALLOW_REMOTE_WITHOUT_LOGIN` | | `true` when another service protects the app |
 | `COMPLETIST_TRUSTED_PROXIES` | | `cloudflare`, or proxy addresses, for the real address of visitors |
@@ -152,6 +154,7 @@ is required (a read-only user is enough to read).
 | `GET /api/overview` | The summary and the progress of every system |
 | `GET /api/systems/{id}/games?filter=missing` | The games of a system: `have`, `missing` or all |
 | `GET /api/games/{id}` | A game, its versions and your files |
+| `GET /api/covers/{system}/{boxart\|snap\|title}/{name}.png` | An image of a game, by its name in the DAT |
 | `POST /api/scan` | Scan the libraries |
 | `POST /api/dats/sync` | Download the DATs |
 | `GET /api/tasks/events` | Running tasks, as server-sent events |
@@ -159,8 +162,9 @@ is required (a read-only user is enough to read).
 
 ## Roadmap
 
-1. **Phase 0, now**: the core, cartridge systems, DATs, counting modes, the new interface.
-2. Covers stored by the server, statistics, a wishlist, and exports to ES-DE and RetroArch.
+1. **Done**: the core, cartridge systems, DATs, counting modes, the new interface, covers kept by
+   the server.
+2. Statistics, a wishlist, and exports to ES-DE and RetroArch.
 3. Disc systems: PlayStation, Saturn, Mega CD, Dreamcast, GameCube and Wii, with CHD and RVZ
    files identified by the checksums of their tracks.
 4. Compression checked against the DAT before an original is deleted, renaming to the DAT names

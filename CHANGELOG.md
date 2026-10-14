@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 (unreleased)
+
+The end of phase 1.
+
+- Box art, screenshots and title screens are downloaded by the server once and kept in the data
+  folder, so pages load at once and work without internet. A clone without its own image shows
+  its parent's. The settings of the libraries show how much space they take and can remove them.
+- The empty activity log no longer breaks the settings of the users.
+- Notification messages are in the language of the interface until you choose one.
+
 ## 0.2.0 (unreleased)
 
 The rest of phase 0.

@@ -26,9 +26,9 @@ esbuild (MIT) builds the interface but is not part of it.
 - **DATs** are downloaded from [libretro-database](https://github.com/libretro/libretro-database)
   (CC BY-SA 4.0), which mirrors the DATs of [No-Intro](https://no-intro.org). They are not
   included in the binary or the image.
-- **Box art and screenshots** are loaded by your browser from
-  [libretro-thumbnails](https://github.com/libretro-thumbnails/libretro-thumbnails). They are
-  not included either.
+- **Box art, screenshots and title screens** are downloaded from
+  [libretro-thumbnails](https://github.com/libretro-thumbnails/libretro-thumbnails) the first time
+  a page shows them, and kept in the data folder. They are not included either.
 
 ## No games
 

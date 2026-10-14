@@ -1,14 +1,9 @@
-// Box art from libretro-thumbnails, named after the No-Intro name of the game. The browser
-// loads them directly for now; the server will cache them in a later version.
+// Box art, screenshots and title screens. The server downloads each image once from
+// libretro-thumbnails and keeps it in its data folder.
 
-const base = 'https://thumbnails.libretro.com';
+const kinds = { Named_Boxarts: 'boxart', Named_Snaps: 'snap', Named_Titles: 'title' } as const;
 
-/** libretro replaces these characters with an underscore in file names */
-function safe(name: string): string {
-	return name.replace(/[&*/:`<>?\\|"]/g, '_');
-}
-
-export function coverUrl(libretroSystem: string, gameName: string, kind: 'Named_Boxarts' | 'Named_Snaps' | 'Named_Titles' = 'Named_Boxarts'): string {
-	if (!libretroSystem) return '';
-	return `${base}/${encodeURIComponent(libretroSystem)}/${kind}/${encodeURIComponent(safe(gameName))}.png`;
+export function coverUrl(system: string, gameName: string, kind: keyof typeof kinds = 'Named_Boxarts'): string {
+	if (!system || !gameName) return '';
+	return `/api/covers/${encodeURIComponent(system)}/${kinds[kind]}/${encodeURIComponent(gameName)}.png`;
 }

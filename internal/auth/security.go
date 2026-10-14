@@ -78,7 +78,7 @@ func contentSecurityPolicy(scriptHashes []string) string {
 		scripts += " '" + h + "'"
 	}
 	return "default-src 'self'; script-src " + scripts + "; style-src 'self' 'unsafe-inline'; " +
-		"img-src 'self' data: https:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; " +
+		"img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; " +
 		"frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 }
 

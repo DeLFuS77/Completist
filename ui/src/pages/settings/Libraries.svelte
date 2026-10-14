@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { del, get, post, put, type Library } from '../../lib/api';
 	import { collection, refreshCollection } from '../../lib/state.svelte';
-	import { t, n, plural } from '../../lib/i18n.svelte';
+	import { t, n, plural, bytes } from '../../lib/i18n.svelte';
 	import Icon from '../../components/Icon.svelte';
 
 	let libraries = $state<Library[]>([]);
@@ -11,6 +11,18 @@
 		collection.version;
 		load();
 	});
+
+	// the images of the games the server keeps
+	let images = $state<{ images: number; bytes: number } | null>(null);
+	const loadImages = () => get<{ images: number; bytes: number }>('/api/covers').then((u) => (images = u));
+	$effect(() => {
+		loadImages();
+	});
+	async function clearImages() {
+		if (!confirm(t('Remove the stored images? They are downloaded again when a page shows them.'))) return;
+		await del('/api/covers');
+		loadImages();
+	}
 
 	// adding: a path typed or picked in the folder browser
 	let adding = $state(false);
@@ -123,3 +135,18 @@
 		</div>
 	</form>
 {/if}
+
+<section class="mt-12 max-w-2xl" aria-labelledby="images">
+	<h3 id="images" class="t-section">{t('Images')}</h3>
+	<p class="mt-2 text-mute">
+		{t('Box art, screenshots and title screens come from libretro-thumbnails. Completist downloads each one the first time a page shows it and keeps it, so it loads at once afterwards, also without internet.')}
+	</p>
+	{#if images}
+		<div class="mt-4 flex flex-wrap items-center gap-4">
+			<span>{plural('{n} image stored', '{n} images stored', images.images)}{images.images ? `, ${bytes(images.bytes)}` : ''}</span>
+			{#if images.images > 0}
+				<button class="text-sm text-mute underline underline-offset-4 hover:text-ink" onclick={clearImages}>{t('Remove them')}</button>
+			{/if}
+		</div>
+	{/if}
+</section>

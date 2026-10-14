@@ -313,6 +313,14 @@ export const es: Record<string, string> = {
 	'Changed the role of a user': 'Cambió el rol de un usuario',
 	'Changed the password of a user': 'Cambió la contraseña de un usuario',
 	'Deleted a user': 'Eliminó un usuario',
+	'Removed the stored images': 'Borró las imágenes guardadas',
+	Images: 'Imágenes',
+	'Box art, screenshots and title screens come from libretro-thumbnails. Completist downloads each one the first time a page shows it and keeps it, so it loads at once afterwards, also without internet.':
+		'Las portadas, capturas y pantallas de título vienen de libretro-thumbnails. Completist descarga cada una la primera vez que una página la muestra y la guarda, así que después carga al momento, también sin internet.',
+	'{n} image stored': '{n} imagen guardada',
+	'{n} images stored': '{n} imágenes guardadas',
+	'Remove them': 'Borrarlas',
+	'Remove the stored images? They are downloaded again when a page shows them.': '¿Borrar las imágenes guardadas? Se vuelven a descargar cuando una página las muestra.',
 	'Completist can tell you about changes in your collection through Discord, Telegram or any web address that accepts JSON (ntfy, Home Assistant, n8n...). Only what is new since the last scan is sent.':
 		'Completist puede avisarte de los cambios en tu colección por Discord, Telegram o cualquier dirección web que acepte JSON (ntfy, Home Assistant, n8n...). Solo se envía lo nuevo desde el último escaneo.',
 	Channels: 'Canales',

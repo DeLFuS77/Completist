@@ -34,6 +34,7 @@ const (
 	UserRoleChanged   = "Changed the role of a user"
 	UserPasswordReset = "Changed the password of a user"
 	UserDeleted       = "Deleted a user"
+	CoversCleared     = "Removed the stored images"
 )
 
 // Entry is an action of a user.

@@ -20,6 +20,7 @@ import (
 	"github.com/DeLFuS77/completist/internal/auth"
 	"github.com/DeLFuS77/completist/internal/backup"
 	"github.com/DeLFuS77/completist/internal/collection"
+	"github.com/DeLFuS77/completist/internal/covers"
 	"github.com/DeLFuS77/completist/internal/dat"
 	"github.com/DeLFuS77/completist/internal/datsync"
 	"github.com/DeLFuS77/completist/internal/notify"
@@ -41,6 +42,8 @@ type Server struct {
 	Activity *activity.Log
 	Backups  *backup.Manager
 	Notifier *notify.Notifier
+	// optional: the images of the games, kept in the data folder
+	Covers   *covers.Cache
 	Progress *collection.Cache
 	Auth     *auth.Auth
 	Log      *slog.Logger
@@ -59,6 +62,7 @@ func (s *Server) Handler() http.Handler {
 	s.Auth.Routes(mux, s.Log)
 	s.routes(mux)
 	s.adminRoutes(mux)
+	s.coverRoutes(mux)
 	mux.Handle("/", s.ui())
 
 	var h http.Handler = mux

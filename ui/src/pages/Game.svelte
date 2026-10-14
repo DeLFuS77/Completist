@@ -22,8 +22,8 @@
 	});
 
 	const color = $derived(game ? systemColor(game.system.id) : '');
-	const snap = $derived(game ? coverUrl(game.system.libretro, game.name, 'Named_Snaps') : '');
-	const title = $derived(game ? coverUrl(game.system.libretro, game.name, 'Named_Titles') : '');
+	const snap = $derived(game ? coverUrl(game.system.id, game.name, 'Named_Snaps') : '');
+	const title = $derived(game ? coverUrl(game.system.id, game.name, 'Named_Titles') : '');
 	let snapOk = $state(false);
 	let titleOk = $state(false);
 	$effect(() => {
@@ -48,7 +48,7 @@
 		<!-- a screenshot of the game, blurred behind the cover -->
 		<div class="absolute inset-0" style="background: {systemTint(game.system.id, 26)}" aria-hidden="true">
 			{#if snap}
-				<img src={snap} alt="" class="h-full w-full scale-110 object-cover blur-2xl transition-opacity duration-500" class:opacity-0={!snapOk} class:opacity-40={snapOk} onload={() => (snapOk = true)} referrerpolicy="no-referrer" />
+				<img src={snap} alt="" class="h-full w-full scale-110 object-cover blur-2xl transition-opacity duration-500" class:opacity-0={!snapOk} class:opacity-40={snapOk} onload={() => (snapOk = true)} />
 			{/if}
 			<div class="absolute inset-0 bg-gradient-to-b from-night/30 via-night/70 to-night"></div>
 		</div>
@@ -83,8 +83,8 @@
 				<section aria-labelledby="shots">
 					<h2 id="shots" class="t-section">{t('Screenshots')}</h2>
 					<div class="mt-4 grid grid-cols-2 gap-4">
-						<img src={title} alt={t('Title screen')} class="aspect-[4/3] w-full rounded-xl bg-panel object-cover [image-rendering:pixelated]" class:hidden={!titleOk} onload={() => (titleOk = true)} referrerpolicy="no-referrer" loading="lazy" />
-						<img src={snap} alt={t('Screenshot')} class="aspect-[4/3] w-full rounded-xl bg-panel object-cover [image-rendering:pixelated]" class:hidden={!snapOk} referrerpolicy="no-referrer" loading="lazy" />
+						<img src={title} alt={t('Title screen')} class="aspect-[4/3] w-full rounded-xl bg-panel object-cover [image-rendering:pixelated]" class:hidden={!titleOk} onload={() => (titleOk = true)} loading="lazy" />
+						<img src={snap} alt={t('Screenshot')} class="aspect-[4/3] w-full rounded-xl bg-panel object-cover [image-rendering:pixelated]" class:hidden={!snapOk} loading="lazy" />
 					</div>
 					{#if !titleOk && !snapOk}<p class="mt-2 text-sm text-mute">{t('No screenshots were found for this game.')}</p>{/if}
 				</section>

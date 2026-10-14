@@ -55,7 +55,7 @@ make dev     # interface rebuilt on change, served from disk
 
 ## Roadmap
 
-1. Store covers on the server instead of loading them in the browser; statistics; wishlist;
+1. Statistics; wishlist;
    export to ES-DE gamelist.xml and RetroArch playlists.
 2. Disc systems (PlayStation, Saturn, Mega CD, Dreamcast, GameCube, Wii): Redump DATs, CHD and
    RVZ hashed per track (chdman, dolphin-tool in the image).

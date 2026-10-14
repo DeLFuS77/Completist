@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 )
 
@@ -272,4 +273,14 @@ func (s *Store) RomsOfGame(ctx context.Context, gameID int64) ([]RomOfGame, erro
 		out = append(out, r)
 	}
 	return out, rows.Err()
+}
+
+// GameExists tells if a DAT lists a game of that name, and the name of its parent.
+func (s *Store) GameExists(ctx context.Context, system, name string) (bool, string, error) {
+	var cloneOf string
+	err := s.db.QueryRowContext(ctx, `SELECT clone_of FROM games WHERE system = ? AND name = ? LIMIT 1`, system, name).Scan(&cloneOf)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, "", nil
+	}
+	return err == nil, cloneOf, err
 }

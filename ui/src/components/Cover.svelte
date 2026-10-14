@@ -12,7 +12,7 @@
 		size = 'grid'
 	}: { system: string; libretro: string; name: string; title: string; owned?: boolean; size?: 'grid' | 'large' } = $props();
 
-	const src = $derived(coverUrl(libretro, name));
+	const src = $derived(coverUrl(libretro ? system : '', name));
 	// remembered by address, so the same component showing another game starts afresh
 	let loadedSrc = $state('');
 	let failedSrc = $state('');
@@ -37,7 +37,6 @@
 			alt={title}
 			loading="lazy"
 			decoding="async"
-			referrerpolicy="no-referrer"
 			class="absolute inset-0 h-full w-full object-contain transition-opacity duration-300"
 			class:opacity-0={!loaded}
 			onload={() => (loadedSrc = src)}

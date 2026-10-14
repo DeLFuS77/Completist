@@ -10,8 +10,8 @@ NAS, tu servidor Unraid o tu ordenador, como un solo programa pequeño con su ba
 
 ![Inicio: cuánto tienes de la colección, una casilla por juego](docs/screenshots/home.png)
 
-> Completist está en su primera versión (fase 0 del [plan](#plan)): sistemas de cartucho, DAT,
-> la colección y sus recuentos. Después llegan los sistemas de disco, la compresión y el renombrado.
+> Completist es joven: ya tiene los sistemas de cartucho, los DAT, la colección y sus recuentos.
+> Después llegan los sistemas de disco, la compresión y el renombrado (ver el [plan](#plan)).
 
 ## Qué hace
 
@@ -29,7 +29,8 @@ NAS, tu servidor Unraid o tu ordenador, como un solo programa pequeño con su ba
 - **Mantiene los DAT al día**: los descarga de libretro-database y los actualiza cada semana, o
   importa tus propios DAT (Logiqx XML o clrmamepro).
 - **Se ve bien**: portadas, capturas, una página por juego con sus versiones y regiones, una
-  interfaz oscura que funciona en el móvil, en español e inglés.
+  interfaz oscura que funciona en el móvil, en español e inglés. Cada imagen se descarga una vez y
+  se guarda, así que las páginas cargan al momento, también sin internet.
 - **Se actualiza solo**: detecta cuando se añaden, quitan o cambian archivos y vuelve a escanear;
   las carpetas de red se revisan cada dos minutos. Los archivos que no cambian no se leen dos
   veces, así que 10.000 archivos se comprueban en menos de un segundo.
@@ -138,6 +139,7 @@ fallidos se frenan y después se bloquean.
 | `COMPLETIST_DAT_UPDATE_HOURS` | `168` | Cada cuánto se actualizan los DAT descargados; `0` lo desactiva |
 | `COMPLETIST_SCAN_WORKERS` | hasta 4 | Archivos que se leen a la vez |
 | `COMPLETIST_DAT_URL` | libretro-database en GitHub | De dónde se descargan los DAT, para usar un espejo |
+| `COMPLETIST_COVERS_URL` | thumbnails.libretro.com | De dónde se descargan las imágenes, para usar un espejo |
 | `COMPLETIST_AUTH_USERNAME`, `COMPLETIST_AUTH_PASSWORD` | | Un administrador |
 | `COMPLETIST_ALLOW_REMOTE_WITHOUT_LOGIN` | | `true` si otro servicio ya protege la app |
 | `COMPLETIST_TRUSTED_PROXIES` | | `cloudflare`, o direcciones de proxies, para ver la dirección real de los visitantes |
@@ -150,10 +152,9 @@ en el [README en inglés](README.md#api).
 
 ## Plan
 
-1. **Fase 0, ahora**: el núcleo, los sistemas de cartucho, los DAT, los modos de recuento y la
-   nueva interfaz.
-2. Portadas guardadas por el servidor, estadísticas, lista de deseos y exportación a ES-DE y
-   RetroArch.
+1. **Hecho**: el núcleo, los sistemas de cartucho, los DAT, los modos de recuento, la nueva
+   interfaz y las portadas guardadas por el servidor.
+2. Estadísticas, lista de deseos y exportación a ES-DE y RetroArch.
 3. Sistemas de disco: PlayStation, Saturn, Mega CD, Dreamcast, GameCube y Wii, identificando los
    CHD y RVZ por las sumas de sus pistas.
 4. Compresión comprobada contra el DAT antes de borrar el original, renombrado a los nombres del
