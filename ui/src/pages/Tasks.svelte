@@ -5,7 +5,7 @@
 	import Bar from '../components/Bar.svelte';
 	import Icon from '../components/Icon.svelte';
 
-	const kindName: Record<string, string> = { scan: 'Library scan', datsync: 'DAT download', datimport: 'DAT import' };
+	const kindName: Record<string, string> = { scan: 'Library scan', datsync: 'DAT download', datimport: 'DAT import', organize: 'Organizing files' };
 	const triggerName: Record<string, string> = {
 		manual: 'started by you',
 		schedule: 'scheduled',
@@ -17,6 +17,7 @@
 
 	function result(task: Task): string {
 		if (task.kind === 'scan') return t('{f} files, {r} read now', { f: n(task.files ?? 0), r: n(task.games ?? 0) });
+		if (task.kind === 'organize') return t('{g} games, {f} files changed', { g: n(task.games ?? 0), f: n(task.files ?? 0) });
 		if (task.kind === 'datsync') return t('{d} DATs, {g} games', { d: n(task.files ?? 0), g: n(task.games ?? 0) });
 		return '';
 	}

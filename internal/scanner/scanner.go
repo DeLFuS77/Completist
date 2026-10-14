@@ -76,6 +76,17 @@ func (sc *Scanner) Start(trigger string) error {
 	return nil
 }
 
+// Exclusive runs work while no scan runs, such as renaming files; a scan asked for meanwhile
+// runs after it.
+func (sc *Scanner) Exclusive(work func()) {
+	sc.running.Lock()
+	work()
+	sc.running.Unlock()
+	if sc.pending.Swap(false) {
+		sc.Start(tasks.TriggerSettings)
+	}
+}
+
 // Run scans every library and waits; for tests and the command line.
 func (sc *Scanner) Run(ctx context.Context, trigger string) error {
 	sc.running.Lock()

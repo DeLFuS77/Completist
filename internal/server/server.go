@@ -24,6 +24,7 @@ import (
 	"github.com/DeLFuS77/completist/internal/dat"
 	"github.com/DeLFuS77/completist/internal/datsync"
 	"github.com/DeLFuS77/completist/internal/notify"
+	"github.com/DeLFuS77/completist/internal/organize"
 	"github.com/DeLFuS77/completist/internal/scanner"
 	"github.com/DeLFuS77/completist/internal/store"
 	"github.com/DeLFuS77/completist/internal/systems"
@@ -43,7 +44,9 @@ type Server struct {
 	Backups  *backup.Manager
 	Notifier *notify.Notifier
 	// optional: the images of the games, kept in the data folder
-	Covers   *covers.Cache
+	Covers *covers.Cache
+	// the changes made to the files, to undo them
+	Journal  *organize.Journal
 	Progress *collection.Cache
 	Auth     *auth.Auth
 	Log      *slog.Logger
@@ -64,6 +67,9 @@ func (s *Server) Handler() http.Handler {
 	s.adminRoutes(mux)
 	s.coverRoutes(mux)
 	s.extraRoutes(mux)
+	if s.Journal != nil {
+		s.organizeRoutes(mux)
+	}
 	mux.Handle("/", s.ui())
 
 	var h http.Handler = mux

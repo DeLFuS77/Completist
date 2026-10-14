@@ -7,6 +7,7 @@ export type Route =
 	| { name: 'tasks' }
 	| { name: 'stats' }
 	| { name: 'wishlist' }
+	| { name: 'organize' }
 	| { name: 'settings'; tab: string }
 	| { name: 'notfound' };
 
@@ -18,6 +19,7 @@ function parse(pathname: string): Route {
 	if (parts[0] === 'tasks') return { name: 'tasks' };
 	if (parts[0] === 'stats') return { name: 'stats' };
 	if (parts[0] === 'wishlist') return { name: 'wishlist' };
+	if (parts[0] === 'organize') return { name: 'organize' };
 	if (parts[0] === 'settings') return { name: 'settings', tab: parts[1] ?? 'libraries' };
 	return { name: 'notfound' };
 }

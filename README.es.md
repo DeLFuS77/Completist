@@ -41,6 +41,9 @@ NAS, tu servidor Unraid o tu ordenador, como un solo programa pequeño con su ba
   uno llega a tu colección.
 - **Exporta** a listas de RetroArch y gamelists de ES-DE, con los nombres de los DAT, para que
   también ahí salgan las portadas.
+- **Ordena tus archivos**: les pone los nombres de los DAT (también a las pistas de un disco y a
+  su CUE), y mete los volcados de cartucho en zip, cada uno comprobado contra el DAT antes de borrar
+  su original. Ves cada cambio antes de hacerlo y todo se puede deshacer.
 - **Te avisa** por Discord, Telegram o cualquier webhook: juegos nuevos en tu colección, sets que
   completas, archivos dañados y entradas nuevas en los DAT.
 - **Guarda una copia** de las bibliotecas, los DAT, los ajustes y los usuarios cada semana, y
@@ -96,7 +99,7 @@ arranque. También puedes usar [docker-compose.yml](docker-compose.yml).
 | Ajuste | Para qué sirve |
 | --- | --- |
 | `/data` | La base de datos y los ajustes |
-| `/roms` | Tus ROMs. Añade `:ro` para montarla de solo lectura: Completist solo las lee |
+| `/roms` | Tus ROMs. Añade `:ro` para montarla de solo lectura; entonces Completist no puede renombrarlas ni comprimirlas |
 | `PUID`, `PGID` | El usuario y el grupo dueños de tus archivos (`id` en el equipo). La app nunca se ejecuta como root |
 | `TZ` | Tu zona horaria |
 
@@ -175,9 +178,9 @@ en el [README en inglés](README.md#api).
 
 1. **Hecho**: el núcleo, los sistemas de cartucho, los DAT, los modos de recuento, la nueva
    interfaz, las portadas guardadas por el servidor, las estadísticas, la lista de deseos, la
-   exportación a ES-DE y RetroArch y los sistemas de disco.
-2. Compresión comprobada contra el DAT antes de borrar el original, renombrado a los nombres del
-   DAT con deshacer, y el plugin de Switch con el código de Switch Library Manager Web.
+   exportación a ES-DE y RetroArch, los sistemas de disco, y el renombrado y la compresión con
+   deshacer.
+2. Lo siguiente: crear CHD a partir de BIN/CUE e ISO, comprobados antes de borrar los originales.
 
 ## Compilar
 

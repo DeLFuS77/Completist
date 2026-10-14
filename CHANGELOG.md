@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.0 (unreleased)
+
+Organizing the files.
+
+- Rename verified files to the names of their DATs: a zip or a CHD after its game, the tracks
+  of a disc after its first track, with the CUE sheet rewritten to match.
+- Pack cartridge dumps in zip files, one per game, each read back and checked against the DAT
+  before its original is removed.
+- Every change is shown before it is made, runs as a task, is kept in a list and can be undone.
+  Read-only libraries are left alone.
+
 ## 0.4.0 (unreleased)
 
 The disc systems.

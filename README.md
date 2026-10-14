@@ -40,6 +40,9 @@ Unraid server or your computer, as one small program with its database inside.
   one reaches your collection.
 - **Exports** to RetroArch playlists and ES-DE gamelists, with the DAT names, so their box art
   shows too.
+- **Organizes your files**: renames them to the names of the DATs (the tracks of a disc and its
+  CUE sheet too), and packs cartridge dumps in zip files, each one checked against the DAT before
+  its original is removed. You see every change before it is made, and every change can be undone.
 - **Tells you the news** through Discord, Telegram or any webhook: games new in your collection,
   sets you complete, damaged files found and new entries in the DATs.
 - **Keeps a backup** of the libraries, DATs, settings and users every week, and keeps the last five;
@@ -93,7 +96,7 @@ start. Or use [docker-compose.yml](docker-compose.yml).
 | Setting | Meaning |
 | --- | --- |
 | `/data` | The database and the settings |
-| `/roms` | Your ROMs. Add `:ro` to mount it read only: Completist only reads them |
+| `/roms` | Your ROMs. Add `:ro` to mount it read only; then Completist cannot rename or pack them |
 | `PUID`, `PGID` | The user and group that own your files (`id` on the host). The app never runs as root |
 | `TZ` | Your time zone |
 
@@ -177,6 +180,7 @@ is required (a read-only user is enough to read).
 | `GET /api/stats` | The statistics, with the history day by day |
 | `GET /api/wishlist` | The wishlist; `PUT` or `DELETE /api/wishlist/{system}/{name}` changes it |
 | `GET /api/export/retroarch?from=&to=`, `GET /api/export/esde` | The exports, as zip files |
+| `GET /api/organize?system=snes&kind=rename\|zip` | What renaming or packing would do; `POST` does it, `GET /api/organize/history` lists the changes and `POST /api/organize/history/{id}/undo` undoes one |
 | `GET /api/covers/{system}/{boxart\|snap\|title}/{name}.png` | An image of a game, by its name in the DAT |
 | `POST /api/scan` | Scan the libraries |
 | `POST /api/dats/sync` | Download the DATs |
@@ -186,9 +190,9 @@ is required (a read-only user is enough to read).
 ## Roadmap
 
 1. **Done**: the core, cartridge systems, DATs, counting modes, the new interface, covers kept by
-   the server, statistics, a wishlist, exports to ES-DE and RetroArch, and the disc systems.
-2. Compression checked against the DAT before an original is deleted, renaming to the DAT names
-   with undo, and the Switch plugin from Switch Library Manager Web.
+   the server, statistics, a wishlist, exports to ES-DE and RetroArch, the disc systems, and
+   renaming and packing with undo.
+2. Next: CHD images made from BIN/CUE and ISO, checked before the originals are removed.
 
 ## Building
 

@@ -24,6 +24,7 @@ import (
 	"github.com/DeLFuS77/completist/internal/covers"
 	"github.com/DeLFuS77/completist/internal/datsync"
 	"github.com/DeLFuS77/completist/internal/notify"
+	"github.com/DeLFuS77/completist/internal/organize"
 	"github.com/DeLFuS77/completist/internal/scanner"
 	"github.com/DeLFuS77/completist/internal/server"
 	"github.com/DeLFuS77/completist/internal/stats"
@@ -121,8 +122,9 @@ func run(log *slog.Logger, dataDir string, address string) error {
 
 	srv := &server.Server{Store: st, Tasks: taskLog, Scanner: sc, Progress: progress, Auth: authn, Log: log,
 		Activity: activityLog, Backups: backups, Notifier: notifier,
-		Covers: &covers.Cache{DataFolder: dataDir, BaseURL: os.Getenv("COMPLETIST_COVERS_URL"), Log: log, Mode: func() string { return server.CoversMode(st) }},
-		UI:     webui.FS(), UIScriptHashes: webui.ScriptHashes()}
+		Covers:  &covers.Cache{DataFolder: dataDir, BaseURL: os.Getenv("COMPLETIST_COVERS_URL"), Log: log, Mode: func() string { return server.CoversMode(st) }},
+		Journal: organize.OpenJournal(dataDir),
+		UI:      webui.FS(), UIScriptHashes: webui.ScriptHashes()}
 	// while developing the interface, serve it from its build folder instead of the binary
 	if dir := os.Getenv("COMPLETIST_UI_DIR"); dir != "" {
 		srv.UI = http.Dir(dir)

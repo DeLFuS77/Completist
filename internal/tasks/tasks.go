@@ -17,6 +17,7 @@ const (
 	KindScan      = "scan"
 	KindDatSync   = "datsync"
 	KindDatImport = "datimport"
+	KindOrganize  = "organize"
 )
 
 // what started a task
@@ -43,6 +44,8 @@ const (
 	NoteUnreadable  = "Some files could not be read."
 	NoteDatFailed   = "A DAT could not be downloaded."
 	NoteNoLibrary   = "The folder of a library cannot be opened."
+	NoteSkipped     = "Some files were left as they were."
+	NoteOrganize    = "The files could not be organized."
 )
 
 const (

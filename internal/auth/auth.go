@@ -279,7 +279,7 @@ func isPublicPath(path string) bool {
 }
 
 // what only administrators may read; read-only users can look at the library and download
-var adminOnlyPaths = []string{"/api/users", "/api/fs", "/api/activity", "/api/notifications", "/api/backups"}
+var adminOnlyPaths = []string{"/api/users", "/api/fs", "/api/activity", "/api/notifications", "/api/backups", "/api/organize"}
 
 func viewerAllowed(r *http.Request) bool {
 	switch r.Method {

@@ -38,6 +38,9 @@ const (
 	CoversChanged     = "Changed how box art is kept"
 	WishAdded         = "Added to the wishlist"
 	WishRemoved       = "Removed from the wishlist"
+	FilesRenamed      = "Renamed files to the DAT names"
+	FilesPacked       = "Packed files in zips"
+	ChangeUndone      = "Undid a change to the files"
 )
 
 // Entry is an action of a user.

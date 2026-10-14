@@ -21,6 +21,7 @@ import (
 	"github.com/DeLFuS77/completist/internal/collection"
 	"github.com/DeLFuS77/completist/internal/covers"
 	"github.com/DeLFuS77/completist/internal/notify"
+	"github.com/DeLFuS77/completist/internal/organize"
 	"github.com/DeLFuS77/completist/internal/scanner"
 	"github.com/DeLFuS77/completist/internal/stats"
 	"github.com/DeLFuS77/completist/internal/store"
@@ -66,7 +67,7 @@ func newFullFixture(t *testing.T) *fullFixture {
 	b := &backup.Manager{DataFolder: data, Store: st, Auth: a, Activity: act}
 	b.OnRestore = progress.Invalidate
 	cv := &covers.Cache{DataFolder: data, Log: log, Mode: func() string { return CoversMode(st) }}
-	srv := &Server{Store: st, Tasks: taskLog, Scanner: sc, Progress: progress, Auth: a, Log: log, Activity: act, Backups: b, Notifier: n, Covers: cv}
+	srv := &Server{Store: st, Tasks: taskLog, Scanner: sc, Progress: progress, Auth: a, Log: log, Activity: act, Backups: b, Notifier: n, Covers: cv, Journal: organize.OpenJournal(data)}
 	return &fullFixture{fixture: &fixture{t: t, handler: srv.Handler(), scanner: sc, library: t.TempDir()}, data: data, store: st, notifier: n, backups: b, activity: act, covers: cv}
 }
 

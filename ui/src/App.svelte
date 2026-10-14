@@ -10,6 +10,7 @@
 	import Tasks from './pages/Tasks.svelte';
 	import Stats from './pages/Stats.svelte';
 	import Wishlist from './pages/Wishlist.svelte';
+	import Organize from './pages/Organize.svelte';
 	import Settings from './pages/Settings.svelte';
 	import Login from './pages/Login.svelte';
 
@@ -43,13 +44,14 @@
 		if (href === '/tasks') return r.name === 'tasks';
 		if (href === '/stats') return r.name === 'stats';
 		if (href === '/wishlist') return r.name === 'wishlist';
+		if (href === '/organize') return r.name === 'organize';
 		if (href === '/settings') return r.name === 'settings';
 		return r.name === 'system' && href === `/systems/${r.id}`;
 	};
 	$effect(() => {
 		const r = route;
 		const sys = r.name === 'system' ? systems.find((s) => s.system.id === r.id)?.system.short : '';
-		const names: Record<string, string> = { tasks: t('Tasks'), settings: t('Settings'), stats: t('Statistics'), wishlist: t('Wishlist') };
+		const names: Record<string, string> = { tasks: t('Tasks'), settings: t('Settings'), stats: t('Statistics'), wishlist: t('Wishlist'), organize: t('Organize') };
 		document.title = sys ? `${sys} – Completist` : names[r.name] ? `${names[r.name]} – Completist` : 'Completist';
 	});
 </script>
@@ -84,6 +86,9 @@
 					{/each}
 				{/if}
 				<div class="mt-auto pt-5">
+					{#if session.status?.isAdmin}
+						<a href="/organize" class="navlink" aria-current={current('/organize') ? 'page' : undefined}><Icon name="tidy" />{t('Organize')}</a>
+					{/if}
 					<a href="/tasks" class="navlink" aria-current={current('/tasks') ? 'page' : undefined}>
 						<Icon name="tasks" />{t('Tasks')}
 						{#if active.length}<span class="ml-auto h-2 w-2 animate-pulse rounded-full bg-gold" aria-label={t('{n} running', { n: active.length })}></span>{/if}
@@ -93,7 +98,7 @@
 			</nav>
 			{#if active.length}
 				<div class="border-t border-line/60 px-5 py-4 text-sm">
-					<div class="truncate text-ink">{t(active[0].kind === 'scan' ? 'Scanning the libraries' : 'Downloading DATs')}</div>
+					<div class="truncate text-ink">{t(active[0].kind === 'scan' ? 'Scanning the libraries' : active[0].kind === 'organize' ? 'Organizing files' : 'Downloading DATs')}</div>
 					<div class="mt-1 truncate text-xs text-mute">{t(active[0].message)}</div>
 					{#if active[0].total > 0}
 						<div class="mt-2 h-1 overflow-hidden rounded-full bg-line"><div class="h-full rounded-full bg-gold transition-[width]" style="width: {(active[0].current / active[0].total) * 100}%"></div></div>
@@ -120,6 +125,7 @@
 				{:else if route.name === 'tasks'}<Tasks />
 				{:else if route.name === 'stats'}<Stats />
 				{:else if route.name === 'wishlist'}<Wishlist />
+				{:else if route.name === 'organize'}<Organize />
 				{:else if route.name === 'settings'}<Settings tab={route.tab} />
 				{:else}
 					<h1 class="t-title">{t('This page does not exist')}</h1>
