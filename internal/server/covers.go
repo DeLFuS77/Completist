@@ -10,6 +10,23 @@ import (
 	"github.com/DeLFuS77/completist/internal/systems"
 )
 
+// CoversSetting holds how box art is kept.
+const CoversSetting = "covers"
+
+// CoversMode reads how box art is kept; original until chosen.
+func CoversMode(st interface {
+	GetSetting(string, any) (bool, error)
+}) string {
+	v := struct {
+		Mode string `json:"mode"`
+	}{covers.ModeOriginal}
+	st.GetSetting(CoversSetting, &v)
+	if !covers.ValidMode(v.Mode) {
+		return covers.ModeOriginal
+	}
+	return v.Mode
+}
+
 func (s *Server) coverRoutes(mux *http.ServeMux) {
 	// an image of a game: /api/covers/snes/boxart/Super Metroid (Japan, USA) (En,Ja).png
 	mux.HandleFunc("GET /api/covers/{system}/{kind}/{name}", func(w http.ResponseWriter, r *http.Request) {
@@ -55,7 +72,11 @@ func (s *Server) coverRoutes(mux *http.ServeMux) {
 			return
 		}
 		w.Header().Set("Cache-Control", "private, max-age=2592000")
-		w.Header().Set("Content-Type", "image/png")
+		if strings.HasSuffix(path, ".jpg") {
+			w.Header().Set("Content-Type", "image/jpeg")
+		} else {
+			w.Header().Set("Content-Type", "image/png")
+		}
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		http.ServeFile(w, r, path)
 	})
@@ -66,6 +87,26 @@ func (s *Server) coverRoutes(mux *http.ServeMux) {
 			return
 		}
 		writeJSON(w, http.StatusOK, s.Covers.Usage())
+	})
+	mux.HandleFunc("PUT /api/covers", func(w http.ResponseWriter, r *http.Request) {
+		var in struct {
+			Mode string `json:"mode"`
+		}
+		if err := decode(r, &in); err != nil || !covers.ValidMode(in.Mode) {
+			writeError(w, http.StatusBadRequest, "Choose how to keep the box art.")
+			return
+		}
+		if err := s.Store.SetSetting(CoversSetting, in); err != nil {
+			s.fail(w, err)
+			return
+		}
+		s.record(r, activity.CoversChanged, in.Mode)
+		if s.Covers != nil {
+			s.Covers.Convert()
+			writeJSON(w, http.StatusOK, s.Covers.Usage())
+			return
+		}
+		writeJSON(w, http.StatusOK, covers.Usage{Mode: in.Mode})
 	})
 	mux.HandleFunc("DELETE /api/covers", func(w http.ResponseWriter, r *http.Request) {
 		if s.Covers == nil {

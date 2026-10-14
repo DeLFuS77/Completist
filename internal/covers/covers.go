@@ -9,7 +9,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"image/jpeg"
+	"image/png"
 	"io"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -48,17 +51,48 @@ var (
 
 var pngMagic = []byte("\x89PNG\r\n\x1a\n")
 
+// How box art is kept. Screenshots and title screens are always kept as they come: they are
+// small, and pixel art would lose its sharp edges in a JPEG.
+const (
+	// the PNG as libretro has it
+	ModeOriginal = "original"
+	// a JPEG of quality 92, with the same pixels: about a quarter of the size, with no
+	// difference to see at the size covers are shown
+	ModeHigh = "high"
+	// a JPEG of quality 80: about a sixth of the size; a close look shows some softness
+	ModeSmall = "small"
+)
+
+var Modes = []string{ModeOriginal, ModeHigh, ModeSmall}
+
+func ValidMode(m string) bool {
+	return m == ModeOriginal || m == ModeHigh || m == ModeSmall
+}
+
+func quality(mode string) int {
+	switch mode {
+	case ModeHigh:
+		return 92
+	case ModeSmall:
+		return 80
+	}
+	return 0
+}
+
 // Cache downloads images on first use and keeps them.
 type Cache struct {
 	DataFolder string
 	BaseURL    string
 	Client     *http.Client
 	Log        *slog.Logger
+	// how box art is kept; nil keeps the original
+	Mode func() string
 
-	once     sync.Once
-	slots    chan struct{}
-	mutex    sync.Mutex
-	inFlight map[string]*call
+	once       sync.Once
+	slots      chan struct{}
+	mutex      sync.Mutex
+	inFlight   map[string]*call
+	converting bool
 }
 
 type call struct {
@@ -97,10 +131,27 @@ func Safe(name string) string {
 	}, name)
 }
 
-// file is where an image is kept: a hash of the name, so any name is a valid file name.
+// file is where an image is kept, without its extension: a hash of the name, so any name is a
+// valid file name. It is a .png, or a .jpg for box art kept smaller.
 func (c *Cache) file(system, kind, name string) string {
 	sum := sha1.Sum([]byte(name))
-	return filepath.Join(c.DataFolder, Folder, system, kind, hex.EncodeToString(sum[:])+".png")
+	return filepath.Join(c.DataFolder, Folder, system, kind, hex.EncodeToString(sum[:]))
+}
+
+func existing(base string) string {
+	for _, ext := range []string{".png", ".jpg"} {
+		if _, err := os.Stat(base + ext); err == nil {
+			return base + ext
+		}
+	}
+	return ""
+}
+
+func (c *Cache) mode() string {
+	if c.Mode == nil {
+		return ModeOriginal
+	}
+	return c.Mode()
 }
 
 // Get returns the file of an image, downloading it if needed. names are tried in order (the
@@ -112,8 +163,8 @@ func (c *Cache) Get(ctx context.Context, system, libretro, kind string, names []
 		return "", ErrNotFound
 	}
 	path := c.file(system, kind, names[0])
-	if _, err := os.Stat(path); err == nil {
-		return path, nil
+	if found := existing(path); found != "" {
+		return found, nil
 	}
 	if info, err := os.Stat(path + ".missing"); err == nil && time.Since(info.ModTime()) < RetryAfter {
 		return "", ErrNotFound
@@ -135,7 +186,7 @@ func (c *Cache) Get(ctx context.Context, system, libretro, kind string, names []
 	c.mutex.Unlock()
 
 	// the download goes on if the page that asked is closed, so the next visit finds it
-	cl.path, cl.err = c.download(path, libretro, folder, names)
+	cl.path, cl.err = c.download(path, kind, libretro, folder, names)
 	c.mutex.Lock()
 	delete(c.inFlight, path)
 	c.mutex.Unlock()
@@ -149,7 +200,7 @@ func (c *Cache) Get(ctx context.Context, system, libretro, kind string, names []
 	}
 }
 
-func (c *Cache) download(path, libretro, folder string, names []string) (string, error) {
+func (c *Cache) download(path, kind, libretro, folder string, names []string) (string, error) {
 	c.slots <- struct{}{}
 	defer func() { <-c.slots }()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -165,11 +216,17 @@ func (c *Cache) download(path, libretro, folder string, names []string) (string,
 			c.Log.Warn("cover download failed", "url", u, "error", err)
 			return "", ErrUnavailable
 		}
-		if err := writeFile(path, data); err != nil {
+		ext := ".png"
+		if kind == "boxart" {
+			if small, ok := shrink(data, c.mode()); ok {
+				data, ext = small, ".jpg"
+			}
+		}
+		if err := writeFile(path+ext, data); err != nil {
 			return "", err
 		}
 		os.Remove(path + ".missing")
-		return path, nil
+		return path + ext, nil
 	}
 	// remembered, so the server is not asked again on every visit
 	if err := writeFile(path+".missing", nil); err != nil {
@@ -232,17 +289,47 @@ func writeFile(path string, data []byte) error {
 	return nil
 }
 
+// shrink makes a JPEG of a box art. ok is false when it is better kept as it is: the mode
+// keeps originals, the image has transparent parts, or the JPEG would not be much smaller.
+func shrink(data []byte, mode string) ([]byte, bool) {
+	q := quality(mode)
+	if q == 0 {
+		return nil, false
+	}
+	img, err := png.Decode(bytes.NewReader(data))
+	if err != nil {
+		return nil, false
+	}
+	if o, ok := img.(interface{ Opaque() bool }); ok && !o.Opaque() {
+		return nil, false
+	}
+	var out bytes.Buffer
+	if err := jpeg.Encode(&out, img, &jpeg.Options{Quality: q}); err != nil {
+		return nil, false
+	}
+	if out.Len() > len(data)*9/10 {
+		return nil, false
+	}
+	return out.Bytes(), true
+}
+
 // Usage is how many images are kept and how much space they take.
 type Usage struct {
-	Images int   `json:"images"`
-	Bytes  int64 `json:"bytes"`
+	Images     int    `json:"images"`
+	Bytes      int64  `json:"bytes"`
+	Mode       string `json:"mode"`
+	Converting bool   `json:"converting"`
 }
 
 // Usage walks the folder of images.
 func (c *Cache) Usage() Usage {
-	var u Usage
+	c.init()
+	u := Usage{Mode: c.mode()}
+	c.mutex.Lock()
+	u.Converting = c.converting
+	c.mutex.Unlock()
 	filepath.WalkDir(filepath.Join(c.DataFolder, Folder), func(path string, d os.DirEntry, err error) error {
-		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".png") {
+		if err != nil || d.IsDir() || !(strings.HasSuffix(path, ".png") || strings.HasSuffix(path, ".jpg")) {
 			return nil
 		}
 		if info, err := d.Info(); err == nil {
@@ -257,4 +344,54 @@ func (c *Cache) Usage() Usage {
 // Clear removes every kept image; they are downloaded again when needed.
 func (c *Cache) Clear() error {
 	return os.RemoveAll(filepath.Join(c.DataFolder, Folder))
+}
+
+// Convert makes the box art already kept smaller, as the mode says, in the background. Images
+// kept smaller are not made original again: removing them downloads them again.
+func (c *Cache) Convert() {
+	c.init()
+	mode := c.mode()
+	if quality(mode) == 0 {
+		return
+	}
+	c.mutex.Lock()
+	if c.converting {
+		c.mutex.Unlock()
+		return
+	}
+	c.converting = true
+	c.mutex.Unlock()
+	go func() {
+		defer func() {
+			c.mutex.Lock()
+			c.converting = false
+			c.mutex.Unlock()
+		}()
+		var before, after int64
+		count := 0
+		filepath.WalkDir(filepath.Join(c.DataFolder, Folder), func(path string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() || filepath.Base(filepath.Dir(path)) != "boxart" || !strings.HasSuffix(path, ".png") {
+				return nil
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return nil
+			}
+			small, ok := shrink(data, mode)
+			if !ok {
+				return nil
+			}
+			base := strings.TrimSuffix(path, ".png")
+			if writeFile(base+".jpg", small) == nil {
+				os.Remove(path)
+				before += int64(len(data))
+				after += int64(len(small))
+				count++
+			}
+			return nil
+		})
+		if count > 0 {
+			c.Log.Info("box art made smaller", "images", count, "before", before, "after", after)
+		}
+	}()
 }

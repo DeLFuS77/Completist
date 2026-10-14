@@ -5,12 +5,18 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"image"
+	"image/color"
+	"image/jpeg"
+	"image/png"
 	"io"
+	"math/rand/v2"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 func (f *fullFixture) raw(path string) *httptest.ResponseRecorder {
@@ -154,5 +160,77 @@ func TestWishlistStatsAndExports(t *testing.T) {
 	f.list("/api/wishlist", &wishes)
 	if len(wishes) != 0 {
 		t.Fatalf("after removing: %v", wishes)
+	}
+}
+
+// a box art like a scan: smooth colours and grain, which a PNG keeps badly
+func photo(w, h int, alpha bool) []byte {
+	img := image.NewNRGBA(image.Rect(0, 0, w, h))
+	r := rand.New(rand.NewPCG(1, 2))
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			n := uint8(r.UintN(24))
+			a := uint8(255)
+			if alpha && x < 10 {
+				a = 0
+			}
+			img.SetNRGBA(x, y, color.NRGBA{uint8(x/2) + n, uint8(y/2) + n, uint8((x+y)/4) + n, a})
+		}
+	}
+	var b bytes.Buffer
+	png.Encode(&b, img)
+	return b.Bytes()
+}
+
+func TestBoxArtKeptSmaller(t *testing.T) {
+	scan, clear := photo(512, 364, false), photo(512, 364, true)
+	images := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/Nintendo - Game Boy/Named_Boxarts/Alpha (World).png", "/Nintendo - Game Boy/Named_Snaps/Alpha (World).png":
+			w.Write(scan)
+		case "/Nintendo - Game Boy/Named_Boxarts/Beta (World).png":
+			w.Write(clear)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer images.Close()
+	f := newFullFixture(t)
+	f.covers.BaseURL = images.URL
+	f.do("POST", "/api/dats/import", gbDat(map[string][]byte{"Alpha (World)": content(41, 64), "Beta (World)": content(42, 64)}))
+
+	// kept as it comes until chosen
+	if rec := f.raw("/api/covers/gb/boxart/Alpha%20(World).png"); rec.Header().Get("Content-Type") != "image/png" || rec.Body.Len() != len(scan) {
+		t.Fatalf("original: %s %d", rec.Header().Get("Content-Type"), rec.Body.Len())
+	}
+	if rec, _ := f.do("PUT", "/api/covers", map[string]string{"mode": "tiny"}); rec.Code != 400 {
+		t.Fatalf("bad mode: %d", rec.Code)
+	}
+	if rec, _ := f.do("PUT", "/api/covers", map[string]string{"mode": "high"}); rec.Code != 200 {
+		t.Fatalf("mode: %d", rec.Code)
+	}
+	// the one kept before is converted in the background
+	deadline := time.Now().Add(10 * time.Second)
+	for f.covers.Usage().Converting && time.Now().Before(deadline) {
+		time.Sleep(20 * time.Millisecond)
+	}
+	rec := f.raw("/api/covers/gb/boxart/Alpha%20(World).png")
+	if rec.Header().Get("Content-Type") != "image/jpeg" || rec.Body.Len() >= len(scan)/2 {
+		t.Fatalf("converted: %s %d of %d", rec.Header().Get("Content-Type"), rec.Body.Len(), len(scan))
+	}
+	if _, err := jpeg.Decode(bytes.NewReader(rec.Body.Bytes())); err != nil {
+		t.Fatal(err)
+	}
+	// transparent parts and screenshots stay PNG
+	if rec := f.raw("/api/covers/gb/boxart/Beta%20(World).png"); rec.Header().Get("Content-Type") != "image/png" || rec.Body.Len() != len(clear) {
+		t.Fatalf("transparent: %s", rec.Header().Get("Content-Type"))
+	}
+	if rec := f.raw("/api/covers/gb/snap/Alpha%20(World).png"); rec.Header().Get("Content-Type") != "image/png" || rec.Body.Len() != len(scan) {
+		t.Fatalf("snap: %s", rec.Header().Get("Content-Type"))
+	}
+	var usage map[string]any
+	f.list("/api/covers", &usage)
+	if usage["mode"] != "high" || usage["images"] != 3.0 {
+		t.Fatalf("usage: %v", usage)
 	}
 }

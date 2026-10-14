@@ -29,7 +29,8 @@ Unraid server or your computer, as one small program with its database inside.
   imported from your own DAT files (Logiqx XML or clrmamepro).
 - **Looks good**: box art, screenshots, a page for each game with its versions and regions, a
   dark interface that works on a phone, in English and Spanish. Each image is downloaded once and
-  kept, so pages load at once, also without internet.
+  kept, so pages load at once, also without internet; box art can be kept as a JPEG of high
+  quality, in a quarter of the space.
 - **Stays up to date**: Completist notices when files are added, removed or replaced and scans
   again; network shares are checked every two minutes. Unchanged files are not read twice, so
   10,000 files are checked in under a second.

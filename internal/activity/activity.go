@@ -35,6 +35,7 @@ const (
 	UserPasswordReset = "Changed the password of a user"
 	UserDeleted       = "Deleted a user"
 	CoversCleared     = "Removed the stored images"
+	CoversChanged     = "Changed how box art is kept"
 	WishAdded         = "Added to the wishlist"
 	WishRemoved       = "Removed from the wishlist"
 )

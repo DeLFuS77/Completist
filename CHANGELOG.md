@@ -7,6 +7,9 @@ The end of phase 1, and the statistics, the wishlist and the exports.
 - Box art, screenshots and title screens are downloaded by the server once and kept in the data
   folder, so pages load at once and work without internet. A clone without its own image shows
   its parent's. The settings of the libraries show how much space they take and can remove them.
+- Box art can be kept as it comes, as a JPEG of high quality (about a quarter of the space, no
+  difference to see) or as a smaller JPEG; the images already kept are converted. Screenshots,
+  title screens and box art with transparent parts always stay as they come.
 - Statistics: how complete the collection was day by day, by maker and by region, the systems
   closest to complete, the space of each one and the games added lately.
 - A wishlist: add a missing game from its page; it is marked in the grid of its system, and a

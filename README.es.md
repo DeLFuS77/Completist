@@ -30,7 +30,8 @@ NAS, tu servidor Unraid o tu ordenador, como un solo programa pequeño con su ba
   importa tus propios DAT (Logiqx XML o clrmamepro).
 - **Se ve bien**: portadas, capturas, una página por juego con sus versiones y regiones, una
   interfaz oscura que funciona en el móvil, en español e inglés. Cada imagen se descarga una vez y
-  se guarda, así que las páginas cargan al momento, también sin internet.
+  se guarda, así que las páginas cargan al momento, también sin internet; las portadas se pueden
+  guardar como JPEG de alta calidad, en una cuarta parte del espacio.
 - **Se actualiza solo**: detecta cuando se añaden, quitan o cambian archivos y vuelve a escanear;
   las carpetas de red se revisan cada dos minutos. Los archivos que no cambian no se leen dos
   veces, así que 10.000 archivos se comprueban en menos de un segundo.

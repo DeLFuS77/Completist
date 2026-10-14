@@ -13,8 +13,34 @@
 	});
 
 	// the images of the games the server keeps
-	let images = $state<{ images: number; bytes: number } | null>(null);
-	const loadImages = () => get<{ images: number; bytes: number }>('/api/covers').then((u) => (images = u));
+	type Images = { images: number; bytes: number; mode: string; converting: boolean };
+	let images = $state<Images | null>(null);
+	let imagesTimer: ReturnType<typeof setTimeout>;
+	const loadImages = () =>
+		get<Images>('/api/covers').then((u) => {
+			images = u;
+			// while the box art is made smaller, the space goes down
+			clearTimeout(imagesTimer);
+			if (u.converting) imagesTimer = setTimeout(loadImages, 1500);
+		});
+	const imageModes = [
+		{ id: 'original', name: 'Original', text: 'The PNG as libretro has it. About 200 KB a cover.' },
+		{ id: 'high', name: 'High quality', text: 'A JPEG of quality 92 with the same pixels: no difference to see, about a quarter of the space. Recommended.' },
+		{ id: 'small', name: 'Smallest', text: 'A JPEG of quality 80: about a sixth of the space. A close look shows some softness.' }
+	];
+	let imageMessage = $state('');
+	async function setImageMode(mode: string) {
+		imageMessage = '';
+		try {
+			images = await put<Images>('/api/covers', { mode });
+			if (images.converting) {
+				imageMessage = t('Making the stored box art smaller...');
+				loadImages();
+			} else imageMessage = t('Saved');
+		} catch (e) {
+			imageMessage = t((e as Error).message);
+		}
+	}
 	$effect(() => {
 		loadImages();
 	});
@@ -136,14 +162,31 @@
 	</form>
 {/if}
 
-<section class="mt-12 max-w-2xl" aria-labelledby="images">
+<section class="mt-12 max-w-4xl" aria-labelledby="images">
 	<h3 id="images" class="t-section">{t('Images')}</h3>
 	<p class="mt-2 text-mute">
 		{t('Box art, screenshots and title screens come from libretro-thumbnails. Completist downloads each one the first time a page shows it and keeps it, so it loads at once afterwards, also without internet.')}
 	</p>
 	{#if images}
-		<div class="mt-4 flex flex-wrap items-center gap-4">
-			<span>{plural('{n} image stored', '{n} images stored', images.images)}{images.images ? `, ${bytes(images.bytes)}` : ''}</span>
+		<h4 class="mt-6 font-semibold">{t('How to keep the box art')}</h4>
+		<div class="mt-3 grid gap-3 md:grid-cols-3" role="radiogroup" aria-label={t('How to keep the box art')}>
+			{#each imageModes as m (m.id)}
+				<label class="panel flex cursor-pointer flex-col gap-2 border-2 p-4 transition-colors" class:border-gold={images.mode === m.id} class:border-transparent={images.mode !== m.id}>
+					<span class="flex items-center gap-2 font-semibold">
+						<input type="radio" name="image-mode" value={m.id} checked={images.mode === m.id} onchange={() => setImageMode(m.id)} class="accent-[var(--color-gold)]" />
+						{t(m.name)}
+					</span>
+					<span class="text-sm text-mute">{t(m.text)}</span>
+				</label>
+			{/each}
+		</div>
+		<p class="mt-3 text-sm text-mute">
+			{t('Screenshots and title screens are always kept as they come: they are small, and pixel art must stay sharp. Box art with transparent parts stays a PNG too.')}
+			{#if images.mode !== 'original'}{' '}{t('To have the originals again, remove the stored images: they are downloaded again.')}{/if}
+		</p>
+		{#if imageMessage}<p class="mt-2 text-sm text-good" role="status">{imageMessage}</p>{/if}
+		<div class="mt-5 flex flex-wrap items-center gap-4">
+			<span>{plural('{n} image stored', '{n} images stored', images.images)}{images.images ? `, ${bytes(images.bytes)}` : ''}{images.converting ? ` · ${t('making them smaller...')}` : ''}</span>
 			{#if images.images > 0}
 				<button class="text-sm text-mute underline underline-offset-4 hover:text-ink" onclick={clearImages}>{t('Remove them')}</button>
 			{/if}
