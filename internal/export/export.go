@@ -23,6 +23,7 @@ var ESDE = map[string]string{
 	"lynx": "atarilynx", "ngp": "ngp", "ngpc": "ngpc", "wonderswan": "wonderswan",
 	"wonderswancolor": "wonderswancolor", "colecovision": "colecovision", "intellivision": "intellivision",
 	"vectrex": "vectrex", "psx": "psx", "saturn": "saturn", "segacd": "segacd",
+	"dreamcast": "dreamcast", "gamecube": "gc", "wii": "wii", "ps2": "ps2", "psp": "psp",
 }
 
 // Paths turns the paths Completist sees into the paths of the device that plays the games:

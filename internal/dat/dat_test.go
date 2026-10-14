@@ -130,6 +130,9 @@ func TestDiscs(t *testing.T) {
 	if r := Release("Policenauts (Japan) (Disc 1) (Rev 1)"); r != "Policenauts (Japan) (Rev 1)" {
 		t.Fatalf("release: %q", r)
 	}
+	if info := ParseName("Demo (Japan) (Disc B)"); info.Disc != 2 {
+		t.Fatalf("disc B: %+v", info)
+	}
 	if r := Release("Tetris (World)"); r != "Tetris (World)" {
 		t.Fatalf("release: %q", r)
 	}

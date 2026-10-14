@@ -3,7 +3,9 @@ package store
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -137,7 +139,7 @@ func (s *Store) ImportDat(ctx context.Context, system string, d *dat.Dat, source
 			return err
 		}
 		defer insertGame.Close()
-		insertRom, err := tx.Prepare(`INSERT INTO roms (game_id, name, stem, size, crc, md5, sha1) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+		insertRom, err := tx.Prepare(`INSERT INTO roms (game_id, name, stem, size, crc, md5, sha1, ident) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
 		if err != nil {
 			return err
 		}
@@ -155,7 +157,7 @@ func (s *Store) ImportDat(ctx context.Context, system string, d *dat.Dat, source
 			}
 			gameID, _ := res.LastInsertId()
 			for _, r := range m.game.Roms {
-				if _, err := insertRom.Exec(gameID, r.Name, Stem(r.Name), r.Size, r.CRC, r.MD5, r.SHA1); err != nil {
+				if _, err := insertRom.Exec(gameID, r.Name, Stem(r.Name), r.Size, r.CRC, r.MD5, r.SHA1, discIdent(system, r.Serial, m.info)); err != nil {
 					return err
 				}
 			}
@@ -205,6 +207,9 @@ func rematch(ctx context.Context, tx *sql.Tx) error {
 			`UPDATE files SET rom_id = (SELECT r.id FROM roms r JOIN games g ON g.id = r.game_id
 				WHERE r.sha1 = '' AND ((r.crc = files.crc AND r.size = files.size) OR (files.alt_crc != '' AND r.crc = files.alt_crc AND r.size = files.alt_size))
 				ORDER BY (g.system = files.system) DESC, r.id LIMIT 1) WHERE rom_id IS NULL AND crc != ''`,
+			// by the code in the disc header, for images that keep only what the game needs
+			`UPDATE files SET rom_id = (SELECT r.id FROM roms r JOIN games g ON g.id = r.game_id
+				WHERE r.ident = files.ident ORDER BY (g.system = files.system) DESC, r.id LIMIT 1) WHERE rom_id IS NULL AND ident != ''`,
 			// a matched file belongs to the system of its DAT, whatever its folder says
 			`UPDATE files SET system = (SELECT g.system FROM roms r JOIN games g ON g.id = r.game_id WHERE r.id = files.rom_id) WHERE rom_id IS NOT NULL`,
 			`UPDATE files SET status = CASE
@@ -238,4 +243,23 @@ func Stem(name string) string {
 		s = strings.TrimSuffix(s, suffix)
 	}
 	return s
+}
+
+var serialCode = regexp.MustCompile(`(?:^|-)([A-Z0-9]{4})(?:-|$)`)
+
+// discIdent is how a GameCube or Wii disc is known by its header: the game code from its
+// serial ("DL-DOL-GALE-USA", "RVL-RMCP-EUR"), the disc and the version.
+func discIdent(system, serial string, info dat.Info) string {
+	if system != "gamecube" && system != "wii" {
+		return ""
+	}
+	m := serialCode.FindStringSubmatch(serial)
+	if m == nil {
+		return ""
+	}
+	disc := 0
+	if info.Disc > 0 {
+		disc = info.Disc - 1
+	}
+	return fmt.Sprintf("%s:%d:%d", m[1], disc, info.Revision)
 }

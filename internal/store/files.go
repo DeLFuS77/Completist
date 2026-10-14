@@ -27,6 +27,8 @@ type File struct {
 	Status    string `json:"status"`
 	Error     string `json:"error,omitempty"`
 	GameID    int64  `json:"gameId,omitempty"`
+	// the code in the disc header, for images matched by it
+	Ident string `json:"-"`
 }
 
 // Key identifies a file and the entry inside it.
@@ -71,19 +73,19 @@ func (s *Store) SaveFiles(ctx context.Context, files []File) error {
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	return s.tx(ctx, func(tx *sql.Tx) error {
-		stmt, err := tx.PrepareContext(ctx, `INSERT INTO files (library_id, path, entry, stem, size, mtime, system, crc, md5, sha1, alt_form, alt_size, alt_crc, alt_sha1, status, error, scanned_at, first_seen)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		stmt, err := tx.PrepareContext(ctx, `INSERT INTO files (library_id, path, entry, stem, size, mtime, system, crc, md5, sha1, alt_form, alt_size, alt_crc, alt_sha1, status, error, scanned_at, first_seen, ident)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT(path, entry) DO UPDATE SET library_id = excluded.library_id, stem = excluded.stem, size = excluded.size, mtime = excluded.mtime,
 				system = excluded.system, crc = excluded.crc, md5 = excluded.md5, sha1 = excluded.sha1, alt_form = excluded.alt_form,
 				alt_size = excluded.alt_size, alt_crc = excluded.alt_crc, alt_sha1 = excluded.alt_sha1, status = excluded.status,
-				error = excluded.error, scanned_at = excluded.scanned_at, rom_id = NULL`)
+				error = excluded.error, scanned_at = excluded.scanned_at, ident = excluded.ident, rom_id = NULL`)
 		if err != nil {
 			return err
 		}
 		defer stmt.Close()
 		for _, f := range files {
 			if _, err := stmt.ExecContext(ctx, f.LibraryID, f.Path, f.Entry, f.Stem, f.Size, f.Mtime, f.System, f.CRC, f.MD5, f.SHA1,
-				f.AltForm, f.AltSize, f.AltCRC, f.AltSHA1, f.Status, f.Error, now, now); err != nil {
+				f.AltForm, f.AltSize, f.AltCRC, f.AltSHA1, f.Status, f.Error, now, now, f.Ident); err != nil {
 				return err
 			}
 		}

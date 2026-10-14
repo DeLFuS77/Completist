@@ -219,3 +219,130 @@ func TestDamaged(t *testing.T) {
 		c.Close()
 	}
 }
+
+// makeISO writes a 512 KB image of 2048-byte sectors.
+func makeISO(t *testing.T, path string) {
+	t.Helper()
+	r := rand.New(rand.NewPCG(8, 1))
+	var b bytes.Buffer
+	for s := 0; s < 256; s++ {
+		text := []byte(fmt.Sprintf("ISO SECTOR %05d ", s))
+		for i := 0; i < 2048; i++ {
+			c := text[i%len(text)]
+			if s%5 == 0 {
+				c = byte(r.UintN(256))
+			}
+			b.WriteByte(c)
+		}
+	}
+	os.WriteFile(path, b.Bytes(), 0o644)
+}
+
+// makeGDI writes a GD-ROM image: a data track and an audio track in the low-density area and a
+// data track in the high-density area.
+func makeGDI(t *testing.T, dir string) {
+	t.Helper()
+	r := rand.New(rand.NewPCG(4, 4))
+	data := func(sectors, lba int) []byte {
+		var b bytes.Buffer
+		for s := 0; s < sectors; s++ {
+			sector := make([]byte, sectorSize)
+			copy(sector, syncHeader[:])
+			l := lba + s + 150
+			sector[12], sector[13], sector[14], sector[15] = toBCD(l/75/60), toBCD(l/75%60), toBCD(l%75), 1
+			for i := 16; i < 2064; i++ {
+				sector[i] = byte(i*s) ^ byte(r.UintN(3))
+			}
+			eccGenerate(sector)
+			b.Write(sector)
+		}
+		return b.Bytes()
+	}
+	var audio bytes.Buffer
+	for i := 0; i < 40*sectorSize/4; i++ {
+		v := int16(8000 * math.Sin(float64(i)*0.02))
+		binary.Write(&audio, binary.LittleEndian, v)
+		binary.Write(&audio, binary.LittleEndian, -v)
+	}
+	os.WriteFile(filepath.Join(dir, "track01.bin"), data(60, 0), 0o644)
+	os.WriteFile(filepath.Join(dir, "track02.raw"), audio.Bytes(), 0o644)
+	os.WriteFile(filepath.Join(dir, "track03.bin"), data(40, 45000), 0o644)
+	gdi := "3\n1 0 4 2352 track01.bin 0\n2 210 0 2352 track02.raw 0\n3 45000 4 2352 track03.bin 0\n"
+	os.WriteFile(filepath.Join(dir, "disc.gdi"), []byte(gdi), 0o644)
+}
+
+func TestMakeDVDAndGDI(t *testing.T) {
+	chdman := os.Getenv("CHDMAN")
+	if chdman == "" {
+		t.Skip("CHDMAN not set")
+	}
+	dir := t.TempDir()
+	iso := filepath.Join(dir, "game.iso")
+	makeISO(t, iso)
+	want := sha1File(t, iso)
+	for name, extra := range map[string][]string{"dvd-default.chd": nil, "dvd-huff.chd": {"-c", "huff"}} {
+		out := filepath.Join(dir, name)
+		args := append([]string{"createdvd", "-i", iso, "-o", out, "-f"}, extra...)
+		if b, err := exec.Command(chdman, args...).CombinedOutput(); err != nil {
+			t.Fatalf("%s: %v\n%s", name, err, b)
+		}
+		c, err := Open(out)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !c.DVD() {
+			t.Fatalf("%s: not a DVD", name)
+		}
+		h := sha1.New()
+		n, err := c.WriteTo(h)
+		if err != nil || n != c.Size() || hex.EncodeToString(h.Sum(nil)) != want {
+			t.Fatalf("%s: %d %v", name, n, err)
+		}
+		c.Close()
+		if os.Getenv("WRITE_FIXTURES") != "" && name == "dvd-default.chd" {
+			b, _ := os.ReadFile(out)
+			os.WriteFile(filepath.Join("testdata", name), b, 0o644)
+			os.WriteFile("testdata/dvd.sha1", []byte(want), 0o644)
+		}
+	}
+
+	makeGDI(t, dir)
+	out := filepath.Join(dir, "gd.chd")
+	if b, err := exec.Command(chdman, "createcd", "-i", filepath.Join(dir, "disc.gdi"), "-o", out, "-f").CombinedOutput(); err != nil {
+		t.Fatalf("gdi: %v\n%s", err, b)
+	}
+	b, _ := exec.Command(chdman, "info", "-i", out).CombinedOutput()
+	t.Logf("%s", b)
+	got := trackHashes(t, out)
+	for n, f := range map[int]string{1: "track01.bin", 2: "track02.raw", 3: "track03.bin"} {
+		if w := sha1File(t, filepath.Join(dir, f)); got[n] != w {
+			t.Errorf("gd track %d: %s, want %s", n, got[n], w)
+		}
+	}
+	if os.Getenv("WRITE_FIXTURES") != "" {
+		b, _ := os.ReadFile(out)
+		os.WriteFile("testdata/gd.chd", b, 0o644)
+		j, _ := json.MarshalIndent(map[int]string{1: sha1File(t, filepath.Join(dir, "track01.bin")), 3: sha1File(t, filepath.Join(dir, "track03.bin"))}, "", "  ")
+		os.WriteFile("testdata/gd.json", j, 0o644)
+	}
+}
+
+func TestDVDAndGDFixtures(t *testing.T) {
+	want, _ := os.ReadFile("testdata/dvd.sha1")
+	c, err := Open("testdata/dvd-default.chd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := sha1.New()
+	if _, err := c.WriteTo(h); err != nil || hex.EncodeToString(h.Sum(nil)) != string(want) || !c.DVD() {
+		t.Fatalf("dvd: %v", err)
+	}
+	c.Close()
+	var gd map[string]string
+	data, _ := os.ReadFile("testdata/gd.json")
+	json.Unmarshal(data, &gd)
+	got := trackHashes(t, "testdata/gd.chd")
+	if got[1] != gd["1"] || got[3] != gd["3"] {
+		t.Fatalf("gd: %v, want %v", got, gd)
+	}
+}

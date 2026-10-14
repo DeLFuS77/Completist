@@ -23,7 +23,9 @@ Issues and pull requests are welcome. Discuss larger changes in an issue first.
 - `internal/dat`: DAT parsers (Logiqx XML, clrmamepro) and No-Intro name tags.
 - `internal/platform`: the plugin interface; `cartridge` hashes dumps (headers, N64 byte order),
   `disc` the first track of CD images.
-- `internal/chd`: reads CHD v5 CD images (LZMA, deflate and FLAC hunks) without chdman.
+- `internal/chd`: reads CHD v5 CD, GD-ROM and DVD images (LZMA, deflate, FLAC and Huffman hunks)
+  without chdman.
+- `internal/discimage`: GCZ and CSO read back as ISO; the disc header of RVZ, WIA and WBFS.
 - `internal/store`: SQLite (ncruces/go-sqlite3, no cgo), migrations, DAT import, matching.
 - `internal/scanner`: walks libraries, hashes new or changed files (zip too), in batches.
 - `internal/collection`: progress per system and the three modes.
@@ -57,8 +59,7 @@ make dev     # interface rebuilt on change, served from disk
 
 ## Roadmap
 
-1. More disc systems: Dreamcast (GDI, CHD GD-ROM), GameCube and Wii (ISO, RVZ), PlayStation 2.
-2. Compression verified against the DAT before deleting originals; renaming to DAT names with
+1. Compression verified against the DAT before deleting originals; renaming to DAT names with
    undo; the Switch plugin from Switch Library Manager Web.
 
 Known limits: 1G1R groups by title when the DAT has no parent/clone links (libretro DATs have

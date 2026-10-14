@@ -30,6 +30,7 @@ const (
 	codecCDZL  = 0x63647a6c // cdzl
 	codecCDLZ  = 0x63646c7a // cdlz
 	codecCDFL  = 0x6364666c // cdfl
+	codecHuff  = 0x68756666 // huff
 	codecCDZS  = 0x63647a73 // cdzs (zstd): not supported
 	codecZstd  = 0x7a737464 // zstd: not supported
 	headerSize = 124
@@ -353,6 +354,8 @@ func (c *File) decompress(codec uint32, src, dst []byte) error {
 			}
 		}
 		return nil
+	case codecHuff:
+		return decodeHuff(src, dst)
 	case codecCDZL, codecCDLZ, codecCDFL:
 		return c.decompressCD(codec, src, dst)
 	}
@@ -453,10 +456,65 @@ func readHuffman(br *bitReader, codes, maxBits int) (*huffman, error) {
 			n++
 		}
 	}
+	return newHuffman(lengths, maxBits)
+}
+
+// readHuffmanTree reads a tree stored with a small tree of its own, as the huff codec does.
+func readHuffmanTree(br *bitReader, codes, maxBits int) (*huffman, error) {
+	small := make([]int, 24)
+	small[0] = int(br.bits(3))
+	start := int(br.bits(3)) + 1
+	count := 0
+	for i := 1; i < 24; i++ {
+		if i < start || count == 7 {
+			small[i] = 0
+			continue
+		}
+		count = int(br.bits(3))
+		if count == 7 {
+			small[i] = 0
+		} else {
+			small[i] = count
+		}
+	}
+	sh, err := newHuffman(small, 6)
+	if err != nil {
+		return nil, err
+	}
+	rleBits := 0
+	for t := codes - 9; t != 0; t >>= 1 {
+		rleBits++
+	}
+	lengths := make([]int, codes)
+	last := 0
+	for n := 0; n < codes; {
+		v := int(sh.decode(br))
+		if v != 0 {
+			last = v - 1
+			lengths[n] = last
+			n++
+			continue
+		}
+		repeat := int(br.bits(3)) + 2
+		if repeat == 7+2 {
+			repeat += int(br.bits(rleBits))
+		}
+		for ; repeat != 0 && n < codes; repeat-- {
+			lengths[n] = last
+			n++
+		}
+		if br.overflow() {
+			return nil, errDamaged
+		}
+	}
+	return newHuffman(lengths, maxBits)
+}
+
+func newHuffman(lengths []int, maxBits int) (*huffman, error) {
 	// canonical codes from the lengths
 	var histogram [33]uint32
 	for _, l := range lengths {
-		if l > maxBits {
+		if l > maxBits || l < 0 {
 			return nil, errDamaged
 		}
 		histogram[l]++
@@ -478,11 +536,31 @@ func readHuffman(br *bitReader, codes, maxBits int) (*huffman, error) {
 		code := histogram[l]
 		histogram[l]++
 		shift := maxBits - l
-		for i := code << shift; i < (code+1)<<shift; i++ {
+		first, last := code<<shift, (code+1)<<shift
+		if last > uint32(len(h.lookup)) {
+			return nil, errDamaged
+		}
+		for i := first; i < last; i++ {
 			h.lookup[i] = uint32(value)<<5 | uint32(l)
 		}
 	}
 	return h, nil
+}
+
+// decodeHuff decodes a hunk of the huff codec: a Huffman tree of bytes, then the bytes.
+func decodeHuff(src, dst []byte) error {
+	br := &bitReader{data: src}
+	h, err := readHuffmanTree(br, 256, 16)
+	if err != nil {
+		return err
+	}
+	for i := range dst {
+		dst[i] = byte(h.decode(br))
+	}
+	if br.overflow() {
+		return errDamaged
+	}
+	return nil
 }
 
 func (h *huffman) decode(br *bitReader) uint32 {
@@ -491,4 +569,42 @@ func (h *huffman) decode(br *bitReader) uint32 {
 	v := h.lookup[bits]
 	br.pos = save + int(v&0x1F)
 	return v >> 5
+}
+
+// DVD reports whether the CHD is a DVD or UMD image: plain 2048-byte sectors, as an ISO.
+func (c *File) DVD() bool {
+	if c.unitBytes != 2048 {
+		return false
+	}
+	e, err := c.metadata("DVD ")
+	return err == nil && len(e) > 0
+}
+
+// Size is the size of the image it holds.
+func (c *File) Size() int64 {
+	return int64(c.logicalBytes)
+}
+
+// WriteTo writes the whole image, as the ISO file it was made from.
+func (c *File) WriteTo(w io.Writer) (written int64, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = errDamaged
+		}
+	}()
+	remaining := int64(c.logicalBytes)
+	for n := int64(0); remaining > 0; n++ {
+		hunk, err := c.hunk(n)
+		if err != nil {
+			return written, err
+		}
+		part := hunk[:min(int64(len(hunk)), remaining)]
+		k, err := w.Write(part)
+		written += int64(k)
+		if err != nil {
+			return written, err
+		}
+		remaining -= int64(len(part))
+	}
+	return written, nil
 }

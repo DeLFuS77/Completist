@@ -124,16 +124,22 @@
 							<li class="panel p-4 text-sm">
 								<div class="break-all font-semibold">{f.entry ? `${f.path} › ${f.entry}` : f.path}</div>
 								<div class="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-mute">
-									<span class="text-good">{t(statusName[f.status] ?? f.status)}</span>
+									{#if f.altForm === 'header'}
+										<span class="text-good" title={t('RVZ, WIA and WBFS images leave out data the game does not need, so their content cannot be compared with the DAT: they are recognised by the code in their disc header.')}>{t('Recognised by its disc code')}</span>
+									{:else}
+										<span class="text-good">{t(statusName[f.status] ?? f.status)}</span>
+									{/if}
 									<span>{bytes(f.size)}</span>
 									{#if f.altForm === 'headerless'}<span>{t('With a copier header')}</span>{/if}
 									{#if f.altForm === 'byteswapped'}<span>{t('In another byte order')}</span>{/if}
 									<span>{t('Changed {d}', { d: date(f.mtime * 1000) })}</span>
 								</div>
-								<dl class="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 font-mono text-xs text-faint">
-									<dt>CRC32</dt><dd class="break-all">{f.crc}</dd>
-									<dt>SHA-1</dt><dd class="break-all">{f.sha1}</dd>
-								</dl>
+								{#if f.sha1}
+									<dl class="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 font-mono text-xs text-faint">
+										<dt>CRC32</dt><dd class="break-all">{f.crc}</dd>
+										<dt>SHA-1</dt><dd class="break-all">{f.sha1}</dd>
+									</dl>
+								{/if}
 							</li>
 						{/each}
 					</ul>

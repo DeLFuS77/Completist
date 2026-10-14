@@ -175,6 +175,8 @@ type Track struct {
 	Frames int
 	// bytes of each frame in its BIN file
 	DataSize int
+	// a track of a GD-ROM (Dreamcast)
+	GDROM bool
 
 	start int64 // first frame in the CHD
 	file  *File
@@ -238,15 +240,19 @@ func (c *File) Tracks() ([]*Track, error) {
 		if err1 != nil || err2 != nil || !ok || frames < 0 {
 			return nil, fmt.Errorf("unknown track: %q", string(e))
 		}
-		pad, _ := strconv.Atoi(fields["PAD"])
 		t := &Track{Number: number, Type: fields["TYPE"], Frames: frames, DataSize: size, start: start, file: c}
 		tracks = append(tracks, t)
-		// GD-ROM images say their padding; the others pad to four frames
+		// GD-ROM images count the gap up to the next track in the frames; every track is padded
+		// to four frames
 		if _, gd := fields["PAD"]; gd {
-			start += int64(frames + pad)
-		} else {
-			start += int64((frames + trackPadding - 1) / trackPadding * trackPadding)
+			t.GDROM = true
+			pad, _ := strconv.Atoi(fields["PAD"])
+			if pad < 0 || pad > frames {
+				return nil, fmt.Errorf("unknown track: %q", string(e))
+			}
+			t.Frames = frames - pad
 		}
+		start += int64((frames + trackPadding - 1) / trackPadding * trackPadding)
 	}
 	return tracks, nil
 }

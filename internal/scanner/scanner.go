@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/DeLFuS77/completist/internal/chd"
+	"github.com/DeLFuS77/completist/internal/discimage"
 	"github.com/DeLFuS77/completist/internal/platform"
 	_ "github.com/DeLFuS77/completist/internal/platform/cartridge"
 	_ "github.com/DeLFuS77/completist/internal/platform/disc"
@@ -137,6 +138,7 @@ func (sc *Scanner) scanLibrary(ctx context.Context, taskID int64, lib store.Libr
 
 	seen := map[store.Key]bool{}
 	todo := []candidate{}
+	discSheets := &sheets{}
 	walkErr := filepath.WalkDir(lib.Path, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			sc.tasks.Warn(taskID, tasks.NoteUnreadable, err.Error())
@@ -196,8 +198,8 @@ func (sc *Scanner) scanLibrary(ctx context.Context, taskID int64, lib store.Libr
 		if !systems.IsGameFile(path) && !(system != nil && strings.EqualFold(filepath.Ext(path), ".bin")) {
 			return nil
 		}
-		if laterTrack(path) {
-			// audio tracks of a disc: the DATs identify a disc by its first track
+		if !discSheets.identifies(path, system) {
+			// audio tracks, and tracks the DATs do not list
 			return nil
 		}
 		key := store.Key{Path: path}
@@ -236,25 +238,43 @@ func laterTrack(path string) bool {
 	return m != nil && m[1] != "1"
 }
 
-// chdEntries lists the track of a CHD that identifies it: the first, when it holds data.
+// chdEntries lists what identifies a CHD: the image of a DVD or UMD, the first track of a CD
+// when it holds data, the data tracks of the high-density area of a GD-ROM.
 func chdEntries(path string) ([]zipEntry, error) {
 	c, err := chd.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer c.Close()
+	if c.DVD() {
+		return []zipEntry{{name: chdImageEntry, size: uint64(c.Size())}}, nil
+	}
 	tracks, err := c.Tracks()
 	if err != nil {
 		return nil, err
 	}
-	if len(tracks) == 0 || tracks[0].Audio() {
-		return nil, nil
+	out := []zipEntry{}
+	for i, t := range tracks {
+		if t.Audio() {
+			continue
+		}
+		if t.GDROM && t.Number < 3 {
+			continue
+		}
+		if !t.GDROM && i > 0 {
+			break
+		}
+		out = append(out, zipEntry{name: trackEntry(t.Number), size: uint64(t.Size())})
 	}
-	return []zipEntry{{name: chdEntryName, size: uint64(tracks[0].Size())}}, nil
+	return out, nil
 }
 
-// chdEntryName is the entry of the data track of a CHD.
-const chdEntryName = "Track 1.bin"
+// the entries of a CHD: its image, or its tracks
+const chdImageEntry = "Image.iso"
+
+func trackEntry(n int) string {
+	return fmt.Sprintf("Track %d.bin", n)
+}
 
 type zipEntry struct {
 	name   string
@@ -447,6 +467,39 @@ func (sc *Scanner) hashOne(c candidate, entry *zip.File) store.File {
 		f.Status, f.Error = "error", err.Error()
 		return f
 	}
+	if c.entry == "" && discimage.IdentifiedByHeader(c.path) {
+		// RVZ, WIA, WBFS: the store matches it by the code in its disc header
+		h, err := discimage.ReadHeader(c.path)
+		if err != nil {
+			f.Status, f.Error = "error", "no GameCube or Wii disc header"
+			return f
+		}
+		f.Ident, f.AltForm = h.Key(), "header"
+		return f
+	}
+	if c.entry == "" && discimage.Expands(c.path) {
+		// GCZ, CSO: hashed as the ISO they hold
+		img, err := discimage.Open(c.path)
+		if err != nil {
+			f.Status, f.Error = "error", err.Error()
+			return f
+		}
+		defer img.Close()
+		if !system.Disc() {
+			system = &systems.System{ID: "", Plugin: "disc"}
+			if plugin, err = platform.For(system); err != nil {
+				f.Status, f.Error = "error", err.Error()
+				return f
+			}
+		}
+		hashes, err := hashStream(plugin, system, img)
+		if err != nil {
+			f.Status, f.Error = "error", err.Error()
+			return f
+		}
+		f.Size, f.CRC, f.MD5, f.SHA1 = hashes[0].Size, hashes[0].CRC, hashes[0].MD5, hashes[0].SHA1
+		return f
+	}
 	var r io.Reader
 	if c.entry == "" {
 		file, err := os.Open(c.path)
@@ -495,11 +548,24 @@ func (sc *Scanner) hashCHD(c candidate) store.File {
 		return fail(err)
 	}
 	defer img.Close()
-	tracks, err := img.Tracks()
-	if err != nil {
-		return fail(err)
+	var source interface {
+		WriteTo(io.Writer) (int64, error)
+		Size() int64
 	}
-	if len(tracks) == 0 || c.entry != chdEntryName {
+	if c.entry == chdImageEntry && img.DVD() {
+		source = img
+	} else {
+		tracks, err := img.Tracks()
+		if err != nil {
+			return fail(err)
+		}
+		for _, t := range tracks {
+			if trackEntry(t.Number) == c.entry {
+				source = t
+			}
+		}
+	}
+	if source == nil {
 		return fail(errors.New(c.entry + " is no longer in the image"))
 	}
 	system := c.system
@@ -510,16 +576,25 @@ func (sc *Scanner) hashCHD(c candidate) store.File {
 	if err != nil {
 		return fail(err)
 	}
-	pr, pw := io.Pipe()
-	go func() {
-		_, err := tracks[0].WriteTo(pw)
-		pw.CloseWithError(err)
-	}()
-	hashes, err := plugin.Hash(system, pr, tracks[0].Size())
-	pr.CloseWithError(io.ErrClosedPipe)
+	hashes, err := hashStream(plugin, system, source)
 	if err != nil {
 		return fail(err)
 	}
 	f.Size, f.CRC, f.MD5, f.SHA1 = hashes[0].Size, hashes[0].CRC, hashes[0].MD5, hashes[0].SHA1
 	return f
+}
+
+// hashStream hashes what a reader of an image writes, as it writes it.
+func hashStream(plugin platform.Plugin, system *systems.System, source interface {
+	WriteTo(io.Writer) (int64, error)
+	Size() int64
+}) ([]platform.Hashes, error) {
+	pr, pw := io.Pipe()
+	go func() {
+		_, err := source.WriteTo(pw)
+		pw.CloseWithError(err)
+	}()
+	hashes, err := plugin.Hash(system, pr, source.Size())
+	pr.CloseWithError(io.ErrClosedPipe)
+	return hashes, err
 }

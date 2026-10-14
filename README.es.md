@@ -63,9 +63,19 @@ Virtual Boy, Game Boy, Game Boy Color, Game Boy Advance, Nintendo DS, Pokémon M
 Master System, Mega Drive, 32X, Game Gear, PC Engine, Atari 2600, Atari 7800, Lynx, Neo Geo Pocket
 (y Color), WonderSwan (y Color), ColecoVision, Intellivision y Vectrex.
 
-Sistemas de disco con DAT de Redump: PlayStation, Saturn y Mega CD. Un disco se reconoce por su
-primera pista, como archivo BIN (con su CUE) o dentro de un CHD, que Completist lee por sí mismo:
-no hace falta chdman. Un juego de varios discos cuenta una vez, cuando los tienes todos.
+Sistemas de disco con DAT de Redump: PlayStation, PlayStation 2, PSP, Saturn, Mega CD,
+Dreamcast, GameCube y Wii. Completist lee los formatos habituales por sí mismo, sin herramientas
+externas:
+
+| Formato | Sistemas | Cómo se reconoce |
+| --- | --- | --- |
+| BIN con CUE o GDI | PlayStation, PS2, Saturn, Mega CD, Dreamcast | La pista de datos que lista el DAT, por sus sumas |
+| ISO | PS2, PSP, GameCube, Wii | Por sus sumas |
+| CHD (CD, GD-ROM, DVD) | PlayStation, PS2, PSP, Saturn, Mega CD, Dreamcast | Leído como las pistas o la ISO originales |
+| GCZ, CSO | GameCube, Wii, PSP | Leído como la ISO original |
+| RVZ, WIA, WBFS | GameCube, Wii | Por el código de juego de la cabecera: quitan datos, así que no se pueden comprobar |
+
+Un juego de varios discos cuenta una vez, cuando los tienes todos.
 
 ## Empezar
 
@@ -164,11 +174,9 @@ en el [README en inglés](README.md#api).
 ## Plan
 
 1. **Hecho**: el núcleo, los sistemas de cartucho, los DAT, los modos de recuento, la nueva
-   interfaz, las portadas guardadas por el servidor, las estadísticas, la lista de deseos y la
-   exportación a ES-DE y RetroArch, y los primeros sistemas de disco: PlayStation, Saturn y Mega
-   CD, con BIN/CUE y CHD.
-2. Más sistemas de disco: Dreamcast (GDI), GameCube y Wii (ISO, RVZ) y PlayStation 2.
-3. Compresión comprobada contra el DAT antes de borrar el original, renombrado a los nombres del
+   interfaz, las portadas guardadas por el servidor, las estadísticas, la lista de deseos, la
+   exportación a ES-DE y RetroArch y los sistemas de disco.
+2. Compresión comprobada contra el DAT antes de borrar el original, renombrado a los nombres del
    DAT con deshacer, y el plugin de Switch con el código de Switch Library Manager Web.
 
 ## Compilar

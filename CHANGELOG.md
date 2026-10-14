@@ -2,7 +2,7 @@
 
 ## 0.4.0 (unreleased)
 
-The first disc systems.
+The disc systems.
 
 - PlayStation, Saturn and Mega CD, with the Redump DATs of libretro-database.
 - A disc is found by its first track: a BIN file, or a CHD, read by Completist itself (LZMA,
@@ -10,7 +10,11 @@ The first disc systems.
   files to review.
 - A game on several discs is one game, complete when every disc is there; the grid tells how
   many discs you have.
-- Exports point to the CUE sheet or the CHD of each disc.
+- Exports point to the CUE sheet, the GDI file or the CHD of each disc.
+- Dreamcast, PlayStation 2, PSP, GameCube and Wii. CHD images of GD-ROMs, DVDs and UMDs, GDI
+  dumps, and GCZ and CSO images are read back as the original; RVZ, WIA and WBFS images are
+  recognised by the game code in their disc header.
+- Only the tracks the DATs list are read: the CUE and GDI files tell which ones are audio.
 
 ## 0.3.0 (unreleased)
 

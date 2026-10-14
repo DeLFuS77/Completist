@@ -19,6 +19,10 @@ func gameFile(system, path string) string {
 		return path
 	}
 	dir := filepath.Dir(path)
+	// a GD-ROM dumped as a GDI file opens by it
+	if gdi, _ := filepath.Glob(filepath.Join(globEscape(dir), "*.gdi")); len(gdi) == 1 {
+		return gdi[0]
+	}
 	base := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 	cue := filepath.Join(dir, trackSuffix.ReplaceAllString(base, "")+".cue")
 	if _, err := os.Stat(cue); err == nil {

@@ -30,7 +30,12 @@ const colors: Record<string, string> = {
 	vectrex: '#63e6be',
 	psx: '#5c7cfa',
 	saturn: '#20c997',
-	segacd: '#e64980'
+	segacd: '#e64980',
+	dreamcast: '#ff6b35',
+	gamecube: '#7048e8',
+	wii: '#e9ecef',
+	ps2: '#1c7ed6',
+	psp: '#a5d8ff'
 };
 
 export function systemColor(id: string): string {

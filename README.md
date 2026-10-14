@@ -61,9 +61,18 @@ Virtual Boy, Game Boy, Game Boy Color, Game Boy Advance, Nintendo DS, Pokémon M
 Master System, Mega Drive, 32X, Game Gear, PC Engine, Atari 2600, Atari 7800, Lynx, Neo Geo Pocket
 (and Color), WonderSwan (and Color), ColecoVision, Intellivision and Vectrex.
 
-Disc systems with Redump DATs: PlayStation, Saturn and Mega CD. A disc is found by its first
-track, as a BIN file (with its CUE sheet) or inside a CHD, which Completist reads itself: no
-chdman needed. A game on several discs counts once, when you have all of them.
+Disc systems with Redump DATs: PlayStation, PlayStation 2, PSP, Saturn, Mega CD, Dreamcast,
+GameCube and Wii. Completist reads the usual formats itself, with no external tool:
+
+| Format | Systems | How it is identified |
+| --- | --- | --- |
+| BIN with CUE or GDI | PlayStation, PS2, Saturn, Mega CD, Dreamcast | The data track the DAT lists, by its checksums |
+| ISO | PS2, PSP, GameCube, Wii | By its checksums |
+| CHD (CD, GD-ROM, DVD) | PlayStation, PS2, PSP, Saturn, Mega CD, Dreamcast | Read back as the original tracks or ISO |
+| GCZ, CSO | GameCube, Wii, PSP | Read back as the original ISO |
+| RVZ, WIA, WBFS | GameCube, Wii | By the game code in the disc header: these leave out data, so they cannot be checked |
+
+A game on several discs counts once, when you have all of them.
 
 ## Quick start
 
@@ -177,10 +186,8 @@ is required (a read-only user is enough to read).
 ## Roadmap
 
 1. **Done**: the core, cartridge systems, DATs, counting modes, the new interface, covers kept by
-   the server, statistics, a wishlist, exports to ES-DE and RetroArch, and the first disc
-   systems: PlayStation, Saturn and Mega CD, with BIN/CUE and CHD.
-2. More disc systems: Dreamcast (GDI), GameCube and Wii (ISO, RVZ), PlayStation 2.
-3. Compression checked against the DAT before an original is deleted, renaming to the DAT names
+   the server, statistics, a wishlist, exports to ES-DE and RetroArch, and the disc systems.
+2. Compression checked against the DAT before an original is deleted, renaming to the DAT names
    with undo, and the Switch plugin from Switch Library Manager Web.
 
 ## Building

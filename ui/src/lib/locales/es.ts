@@ -315,6 +315,8 @@ export const es: Record<string, string> = {
 	'Deleted a user': 'Eliminó un usuario',
 	'Removed the stored images': 'Borró las imágenes guardadas',
 	'{n} of {m} discs': '{n} de {m} discos',
+	'Recognised by its disc code': 'Reconocido por el código del disco',
+	'RVZ, WIA and WBFS images leave out data the game does not need, so their content cannot be compared with the DAT: they are recognised by the code in their disc header.': 'Las imágenes RVZ, WIA y WBFS quitan datos que el juego no necesita, así que su contenido no se puede comparar con el DAT: se reconocen por el código de la cabecera del disco.',
 	'Changed how box art is kept': 'Cambió cómo se guardan las portadas',
 	'Original': 'Original',
 	'The PNG as libretro has it. About 200 KB a cover.': 'El PNG tal como lo tiene libretro. Unos 200 KB por portada.',

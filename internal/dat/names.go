@@ -167,8 +167,12 @@ func (info *Info) readTag(tag string) {
 	}
 	switch {
 	case strings.HasPrefix(lower, "disc "):
-		if n, err := strconv.Atoi(strings.Fields(lower[5:])[0]); err == nil {
+		word := strings.Fields(lower[5:])[0]
+		if n, err := strconv.Atoi(word); err == nil {
 			info.Disc = n
+		} else if len(word) == 1 && word[0] >= 'a' && word[0] <= 'z' {
+			// "(Disc A)", "(Disc B)"
+			info.Disc = int(word[0]-'a') + 1
 		} else {
 			info.Disc = 1
 		}
