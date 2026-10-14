@@ -97,5 +97,5 @@ func (l *Log) Add(user, action, detail string) {
 func (l *Log) List() []Entry {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
-	return append([]Entry(nil), l.entries...)
+	return append([]Entry{}, l.entries...)
 }

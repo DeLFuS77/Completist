@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { ApiError, get, post, put } from '../../lib/api';
-	import { t } from '../../lib/i18n.svelte';
+	import { t, locale } from '../../lib/i18n.svelte';
 
 	type Options = {
 		discordWebhookUrl: string;
@@ -19,7 +19,11 @@
 	let error = $state('');
 	let busy = $state(false);
 	$effect(() => {
-		get<Options>('/api/notifications').then((x) => (o = x));
+		get<Options>('/api/notifications').then((x) => {
+			// nothing configured yet: the messages follow the language of the interface
+			if (!x.discordWebhookUrl && !x.telegramBotToken && !x.webhookUrl && (locale.code === 'en' || locale.code === 'es')) x.language = locale.code;
+			o = x;
+		});
 	});
 
 	async function save(e: SubmitEvent) {

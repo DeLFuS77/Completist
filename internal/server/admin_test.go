@@ -251,3 +251,11 @@ func TestWatcherScansChangedFolders(t *testing.T) {
 		t.Fatal("no scan after a file was added")
 	}
 }
+
+func TestEmptyActivityIsAList(t *testing.T) {
+	f := newFullFixture(t)
+	rec, _ := f.do("GET", "/api/activity", nil)
+	if strings.TrimSpace(rec.Body.String()) != "[]" {
+		t.Fatalf("empty activity: %s", rec.Body)
+	}
+}

@@ -22,7 +22,7 @@
 
 	type Entry = { time: string; user?: string; action: string; detail?: string };
 	let activity = $state<Entry[]>([]);
-	const loadActivity = () => get<Entry[]>('/api/activity').then((a) => (activity = a)).catch(() => {});
+	const loadActivity = () => get<Entry[]>('/api/activity').then((a) => (activity = a ?? [])).catch(() => {});
 	$effect(() => {
 		loadActivity();
 	});
