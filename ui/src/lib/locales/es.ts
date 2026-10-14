@@ -42,7 +42,7 @@ export const es: Record<string, string> = {
 	'Folders named after a system, such as snes or Mega Drive, help to tell the files apart.': 'Las carpetas con el nombre de un sistema, como snes o Mega Drive, ayudan a distinguir los archivos.',
 	'Add a library': 'Añadir una biblioteca',
 	'Download the DATs of your systems': 'Descarga los DAT de tus sistemas',
-	'The DATs come from No-Intro through libretro-database. Completist picks the systems found in your folders.': 'Los DAT son los de No-Intro, a través de libretro-database. Completist elige los sistemas que encuentra en tus carpetas.',
+	'The DATs come from No-Intro and Redump through libretro-database. Completist picks the systems found in your folders.': 'Los DAT son los de No-Intro y Redump, a través de libretro-database. Completist elige los sistemas que encuentra en tus carpetas.',
 	'Download the DATs': 'Descargar los DAT',
 	'Downloading…': 'Descargando…',
 	'Choose the systems': 'Elegir los sistemas',
@@ -155,8 +155,8 @@ export const es: Record<string, string> = {
 	Cancel: 'Cancelar',
 	'Remove {name}': 'Quitar {name}',
 	'Remove the library {name}? Its files stay on the disk; Completist only forgets them.': '¿Quitar la biblioteca {name}? Sus archivos se quedan en el disco; Completist solo los olvida.',
-	'A DAT lists every known good dump of a system. Completist downloads the No-Intro DATs from libretro-database and updates them every week. You can also import a DAT file of your own, from No-Intro or another group.':
-		'Un DAT lista todos los volcados buenos conocidos de un sistema. Completist descarga los DAT de No-Intro desde libretro-database y los actualiza cada semana. También puedes importar tu propio archivo DAT, de No-Intro o de otro grupo.',
+	'A DAT lists every known good dump of a system. Completist downloads the No-Intro DATs (cartridges) and the Redump DATs (discs) from libretro-database and updates them every week. You can also import a DAT file of your own, from them or another group.':
+		'Un DAT lista todos los volcados buenos conocidos de un sistema. Completist descarga los DAT de No-Intro (cartuchos) y de Redump (discos) desde libretro-database y los actualiza cada semana. También puedes importar tu propio archivo DAT, de ellos o de otro grupo.',
 	'Download the selected DATs ({n})': 'Descargar los DAT elegidos ({n})',
 	'Import a DAT file': 'Importar un archivo DAT',
 	'System of the file': 'Sistema del archivo',

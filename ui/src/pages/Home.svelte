@@ -96,7 +96,7 @@
 				</span>
 				<div class="flex-1">
 					<h2 class="t-section">{t('Download the DATs of your systems')}</h2>
-					<p class="mt-1 text-mute">{t('The DATs come from No-Intro through libretro-database. Completist picks the systems found in your folders.')}</p>
+					<p class="mt-1 text-mute">{t('The DATs come from No-Intro and Redump through libretro-database. Completist picks the systems found in your folders.')}</p>
 					{#if needsDats && !needsLibrary && isAdmin}
 						<div class="mt-4 flex flex-wrap gap-3">
 							<button class="btn btn-primary" onclick={downloadDats} disabled={busy || syncing || scanning}>

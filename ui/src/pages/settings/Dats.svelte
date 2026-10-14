@@ -70,7 +70,7 @@
 </script>
 
 <p class="max-w-prose text-mute">
-	{t('A DAT lists every known good dump of a system. Completist downloads the No-Intro DATs from libretro-database and updates them every week. You can also import a DAT file of your own, from No-Intro or another group.')}
+	{t('A DAT lists every known good dump of a system. Completist downloads the No-Intro DATs (cartridges) and the Redump DATs (discs) from libretro-database and updates them every week. You can also import a DAT file of your own, from them or another group.')}
 </p>
 
 <div class="mt-6 flex flex-wrap items-center gap-3">
