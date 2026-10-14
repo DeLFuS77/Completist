@@ -27,7 +27,10 @@ const colors: Record<string, string> = {
 	wonderswancolor: '#4dabf7',
 	colecovision: '#adb5bd',
 	intellivision: '#c9a86a',
-	vectrex: '#63e6be'
+	vectrex: '#63e6be',
+	psx: '#5c7cfa',
+	saturn: '#20c997',
+	segacd: '#e64980'
 };
 
 export function systemColor(id: string): string {

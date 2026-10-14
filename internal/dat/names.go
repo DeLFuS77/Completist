@@ -73,6 +73,22 @@ type Info struct {
 	Flags     Flags
 	// revision number, 0 for the first release
 	Revision int
+	// the disc of a game on several, 0 for a game on one
+	Disc int
+}
+
+// Release is the name of the release a disc belongs to: the name without "(Disc 2)", so the
+// discs of a game are counted as one release.
+func Release(name string) string {
+	i := strings.Index(strings.ToLower(name), " (disc ")
+	if i < 0 {
+		return name
+	}
+	end := strings.IndexByte(name[i+2:], ')')
+	if end < 0 {
+		return name
+	}
+	return name[:i] + name[i+2+end+1:]
 }
 
 // ParseName reads a No-Intro or Redump style name, such as
@@ -150,6 +166,12 @@ func (info *Info) readTag(tag string) {
 		return
 	}
 	switch {
+	case strings.HasPrefix(lower, "disc "):
+		if n, err := strconv.Atoi(strings.Fields(lower[5:])[0]); err == nil {
+			info.Disc = n
+		} else {
+			info.Disc = 1
+		}
 	case strings.HasPrefix(lower, "rev "):
 		if n, err := strconv.Atoi(strings.TrimSpace(lower[4:])); err == nil {
 			info.Revision = n

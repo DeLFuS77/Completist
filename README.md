@@ -2,7 +2,7 @@
 
 **The ROM library manager that tells you what's missing.**
 
-Completist compares your ROMs with the No-Intro DATs and shows, system by system, what you have,
+Completist compares your ROMs with the No-Intro and Redump DATs and shows, system by system, what you have,
 what is missing and which files are damaged, duplicated or unknown. It runs on your NAS, your
 Unraid server or your computer, as one small program with its database inside.
 
@@ -60,6 +60,10 @@ Cartridge systems with No-Intro DATs: NES, Famicom Disk System, Super Nintendo, 
 Virtual Boy, Game Boy, Game Boy Color, Game Boy Advance, Nintendo DS, Pokémon Mini, SG-1000,
 Master System, Mega Drive, 32X, Game Gear, PC Engine, Atari 2600, Atari 7800, Lynx, Neo Geo Pocket
 (and Color), WonderSwan (and Color), ColecoVision, Intellivision and Vectrex.
+
+Disc systems with Redump DATs: PlayStation, Saturn and Mega CD. A disc is found by its first
+track, as a BIN file (with its CUE sheet) or inside a CHD, which Completist reads itself: no
+chdman needed. A game on several discs counts once, when you have all of them.
 
 ## Quick start
 
@@ -145,7 +149,7 @@ be reached from the internet.
 | `COMPLETIST_ALLOWED_HOSTS` | | More host names the app answers to while no user exists |
 | `COMPLETIST_DAT_UPDATE_HOURS` | `168` | How often the downloaded DATs are updated; `0` turns it off |
 | `COMPLETIST_SCAN_WORKERS` | up to 4 | Files read at the same time |
-| `COMPLETIST_DAT_URL` | libretro-database on GitHub | Where the DATs are downloaded from, for a mirror |
+| `COMPLETIST_DAT_URL` | the metadat folder of libretro-database | Where the DATs are downloaded from, for a mirror with its `no-intro` and `redump` folders |
 | `COMPLETIST_COVERS_URL` | thumbnails.libretro.com | Where the images are downloaded from, for a mirror |
 | `COMPLETIST_AUTH_USERNAME`, `COMPLETIST_AUTH_PASSWORD` | | An administrator |
 | `COMPLETIST_ALLOW_REMOTE_WITHOUT_LOGIN` | | `true` when another service protects the app |
@@ -173,9 +177,9 @@ is required (a read-only user is enough to read).
 ## Roadmap
 
 1. **Done**: the core, cartridge systems, DATs, counting modes, the new interface, covers kept by
-   the server, statistics, a wishlist, and exports to ES-DE and RetroArch.
-2. Disc systems: PlayStation, Saturn, Mega CD, Dreamcast, GameCube and Wii, with CHD and RVZ
-   files identified by the checksums of their tracks.
+   the server, statistics, a wishlist, exports to ES-DE and RetroArch, and the first disc
+   systems: PlayStation, Saturn and Mega CD, with BIN/CUE and CHD.
+2. More disc systems: Dreamcast (GDI), GameCube and Wii (ISO, RVZ), PlayStation 2.
 3. Compression checked against the DAT before an original is deleted, renaming to the DAT names
    with undo, and the Switch plugin from Switch Library Manager Web.
 

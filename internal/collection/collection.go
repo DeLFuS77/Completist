@@ -90,6 +90,9 @@ type Entry struct {
 	Versions int      `json:"versions"`
 	// on the wishlist: this game or another version of it
 	Wanted bool `json:"wanted"`
+	// a game on several discs: how many, and how many you have
+	Discs      int `json:"discs,omitempty"`
+	DiscsOwned int `json:"discsOwned,omitempty"`
 	// the names of every version counted as this entry
 	Names []string `json:"-"`
 }
@@ -106,20 +109,73 @@ type Progress struct {
 	Files   store.SystemFileCounts `json:"files"`
 }
 
-// Entries returns what there is to collect for a system, in a mode.
+// release is a game as sold: one DAT entry, or the discs of a game on several.
+type release struct {
+	discs []store.GameRow
+}
+
+func (r release) first() store.GameRow { return r.discs[0] }
+
+func (r release) owned() bool {
+	for _, d := range r.discs {
+		if d.Have == 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func (r release) counts() (files, discsOwned int) {
+	for _, d := range r.discs {
+		files += d.Have
+		if d.Have > 0 {
+			discsOwned++
+		}
+	}
+	return
+}
+
+// releases groups the discs of each game, keeping the order of the rows.
+func releases(rows []store.GameRow) []release {
+	out := []release{}
+	index := map[string]int{}
+	for _, g := range rows {
+		key := dat.Release(g.Name)
+		if key == g.Name {
+			out = append(out, release{discs: []store.GameRow{g}})
+			continue
+		}
+		if i, ok := index[key]; ok {
+			out[i].discs = append(out[i].discs, g)
+			continue
+		}
+		index[key] = len(out)
+		out = append(out, release{discs: []store.GameRow{g}})
+	}
+	for _, r := range out {
+		sort.SliceStable(r.discs, func(i, j int) bool {
+			return dat.ParseName(r.discs[i].Name).Disc < dat.ParseName(r.discs[j].Name).Disc
+		})
+	}
+	return out
+}
+
+// Entries returns what there is to collect for a system, in a mode. A game on several discs
+// is one entry, owned when every disc is there.
 func Entries(ctx context.Context, s *store.Store, system string, mode string, regions []string) ([]Entry, error) {
 	rows, err := s.Games(ctx, system)
 	if err != nil {
 		return nil, err
 	}
+	all := releases(rows)
 	entries := []Entry{}
 	switch mode {
 	case ModeFull, ModeOfficial:
-		for _, g := range rows {
-			if mode == ModeOfficial && !dat.Flags(g.Flags).Official() {
+		for _, r := range all {
+			if mode == ModeOfficial && !dat.Flags(r.first().Flags).Official() {
 				continue
 			}
-			entries = append(entries, entry(g, 1))
+			entries = append(entries, releaseEntry(r, 1))
 		}
 	default:
 		// a game is grouped with its parent when the DAT says (cloneof), else by its title
@@ -127,9 +183,10 @@ func Entries(ctx context.Context, s *store.Store, system string, mode string, re
 		for _, g := range rows {
 			titleOf[g.Name] = g.Title
 		}
-		groups := map[string][]store.GameRow{}
+		groups := map[string][]release{}
 		order := []string{}
-		for _, g := range rows {
+		for _, r := range all {
+			g := r.first()
 			if !dat.Flags(g.Flags).Official() {
 				continue
 			}
@@ -140,30 +197,33 @@ func Entries(ctx context.Context, s *store.Store, system string, mode string, re
 			if _, ok := groups[key]; !ok {
 				order = append(order, key)
 			}
-			groups[key] = append(groups[key], g)
+			groups[key] = append(groups[key], r)
 		}
 		for _, key := range order {
 			group := groups[key]
 			// show the version you have, or else the one you would want
-			owned := []store.GameRow{}
+			owned := []release{}
 			files := 0
-			for _, g := range group {
-				if g.Have > 0 {
-					owned = append(owned, g)
-					files += g.Have
+			for _, r := range group {
+				f, _ := r.counts()
+				files += f
+				if r.owned() {
+					owned = append(owned, r)
 				}
 			}
-			var e Entry
+			candidates := group
 			if len(owned) > 0 {
-				e = entry(pick(owned, regions), len(group))
-				e.Files = files
-			} else {
-				e = entry(pick(group, regions), len(group))
+				candidates = owned
 			}
-			e.Names = make([]string, len(group))
-			for i, g := range group {
-				e.Names[i] = g.Name
+			e := releaseEntry(pickRelease(candidates, regions), len(group))
+			e.Files = files
+			e.Names = e.Names[:0]
+			for _, r := range group {
+				for _, d := range r.discs {
+					e.Names = append(e.Names, d.Name)
+				}
 			}
+			e.Owned = len(owned) > 0
 			entries = append(entries, e)
 		}
 	}
@@ -171,6 +231,37 @@ func Entries(ctx context.Context, s *store.Store, system string, mode string, re
 		return strings.ToLower(entries[i].Name) < strings.ToLower(entries[j].Name)
 	})
 	return entries, nil
+}
+
+func releaseEntry(r release, versions int) Entry {
+	e := entry(r.first(), versions)
+	e.Owned = r.owned()
+	e.Files, e.DiscsOwned = r.counts()
+	e.Names = make([]string, len(r.discs))
+	for i, d := range r.discs {
+		e.Names[i] = d.Name
+	}
+	if len(r.discs) > 1 {
+		// the name stays the first disc's, which its box art has
+		e.Discs = len(r.discs)
+	} else {
+		e.DiscsOwned = 0
+	}
+	return e
+}
+
+func pickRelease(group []release, regions []string) release {
+	rows := make([]store.GameRow, len(group))
+	for i, r := range group {
+		rows[i] = r.first()
+	}
+	best := pick(rows, regions)
+	for _, r := range group {
+		if r.first().ID == best.ID {
+			return r
+		}
+	}
+	return group[0]
 }
 
 func entry(g store.GameRow, versions int) Entry {

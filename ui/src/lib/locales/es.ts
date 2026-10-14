@@ -314,6 +314,7 @@ export const es: Record<string, string> = {
 	'Changed the password of a user': 'Cambió la contraseña de un usuario',
 	'Deleted a user': 'Eliminó un usuario',
 	'Removed the stored images': 'Borró las imágenes guardadas',
+	'{n} of {m} discs': '{n} de {m} discos',
 	'Changed how box art is kept': 'Cambió cómo se guardan las portadas',
 	'Original': 'Original',
 	'The PNG as libretro has it. About 200 KB a cover.': 'El PNG tal como lo tiene libretro. Unos 200 KB por portada.',

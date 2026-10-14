@@ -21,11 +21,16 @@ written by the same author. Completist contains no code of the projects that one
 
 esbuild (MIT) builds the interface but is not part of it.
 
+The CHD reader (`internal/chd`) is written from [libchdr](https://github.com/rtissera/libchdr)
+(BSD 3-Clause) and the [MAME](https://github.com/mamedev/mame) sources, the LZMA decoder from the
+LZMA specification by Igor Pavlov (public domain) and the FLAC decoder from the FLAC format
+specification. Its test images were made with chdman.
+
 ## Data used at run time
 
 - **DATs** are downloaded from [libretro-database](https://github.com/libretro/libretro-database)
-  (CC BY-SA 4.0), which mirrors the DATs of [No-Intro](https://no-intro.org). They are not
-  included in the binary or the image.
+  (CC BY-SA 4.0), which mirrors the DATs of [No-Intro](https://no-intro.org) and
+  [Redump](http://redump.org). They are not included in the binary or the image.
 - **Box art, screenshots and title screens** are downloaded from
   [libretro-thumbnails](https://github.com/libretro-thumbnails/libretro-thumbnails) the first time
   a page shows them, and kept in the data folder. They are not included either.

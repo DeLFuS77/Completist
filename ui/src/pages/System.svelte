@@ -157,6 +157,7 @@
 							<span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background: {e.owned ? color : 'transparent'}; border: 1.5px solid {e.owned ? color : 'var(--color-faint)'}"></span>
 							<span class="flex-1 truncate" class:text-mute={!e.owned}>{e.name}</span>
 							{#if e.wanted && !e.owned}<span class="text-gold"><Icon name="star" size={15} filled label={t('On your wishlist')} /></span>{/if}
+							{#if e.discs && !e.owned && e.discsOwned}<span class="text-sm text-warn">{t('{n} of {m} discs', { n: e.discsOwned, m: e.discs })}</span>{/if}
 							{#if e.versions > 1}<span class="text-sm text-faint">{plural('{n} version', '{n} versions', e.versions)}</span>{/if}
 						</a>
 					</li>
@@ -173,6 +174,7 @@
 							</div>
 							<div class="mt-2 line-clamp-2 text-sm leading-snug" class:text-mute={!e.owned}>{e.title}</div>
 							<div class="text-xs text-faint">{e.regions.map((r) => t(r)).join(', ')}</div>
+							{#if e.discs && !e.owned && e.discsOwned}<div class="text-xs text-warn">{t('{n} of {m} discs', { n: e.discsOwned, m: e.discs })}</div>{/if}
 						</a>
 					</li>
 				{/each}

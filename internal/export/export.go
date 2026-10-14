@@ -22,7 +22,7 @@ var ESDE = map[string]string{
 	"gamegear": "gamegear", "pcengine": "pcengine", "atari2600": "atari2600", "atari7800": "atari7800",
 	"lynx": "atarilynx", "ngp": "ngp", "ngpc": "ngpc", "wonderswan": "wonderswan",
 	"wonderswancolor": "wonderswancolor", "colecovision": "colecovision", "intellivision": "intellivision",
-	"vectrex": "vectrex",
+	"vectrex": "vectrex", "psx": "psx", "saturn": "saturn", "segacd": "segacd",
 }
 
 // Paths turns the paths Completist sees into the paths of the device that plays the games:
@@ -84,8 +84,10 @@ func RetroArch(w io.Writer, files []store.Matched, paths Paths) error {
 		name := sys.LibretroDat + ".lpl"
 		pl := playlist{Version: "1.5", Items: []playlistItem{}}
 		for _, f := range list {
-			path := paths.apply(f.Path)
-			if f.Entry != "" {
+			file := gameFile(f.System, f.Path)
+			path := paths.apply(file)
+			// a CHD is opened as a whole, a zip by its entry
+			if f.Entry != "" && !strings.EqualFold(filepath.Ext(f.Path), ".chd") {
 				path += "#" + f.Entry
 			}
 			crc := ""
@@ -132,7 +134,7 @@ func ESDEGamelists(w io.Writer, files []store.Matched) error {
 		gl := gameList{}
 		seen := map[string]bool{}
 		for _, f := range list {
-			rel := relative(f.Library, f.Path, sys.ID)
+			rel := relative(f.Library, gameFile(f.System, f.Path), sys.ID)
 			// ES-DE opens files, not entries in an archive: one game per file
 			if seen[rel] {
 				continue

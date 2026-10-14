@@ -155,7 +155,7 @@ func (s *Store) ImportDat(ctx context.Context, system string, d *dat.Dat, source
 			}
 			gameID, _ := res.LastInsertId()
 			for _, r := range m.game.Roms {
-				if _, err := insertRom.Exec(gameID, r.Name, strings.ToLower(stem(r.Name)), r.Size, r.CRC, r.MD5, r.SHA1); err != nil {
+				if _, err := insertRom.Exec(gameID, r.Name, Stem(r.Name), r.Size, r.CRC, r.MD5, r.SHA1); err != nil {
 					return err
 				}
 			}
@@ -230,7 +230,12 @@ func stem(name string) string {
 	return strings.TrimSuffix(name, filepath.Ext(name))
 }
 
-// Stem is exported for the scanner, so files and DAT entries are compared the same way.
+// Stem is exported for the scanner, so files and DAT entries are compared the same way. The
+// first track of a disc compares as the disc: "Game (USA) (Track 1).bin" as "Game (USA)".
 func Stem(name string) string {
-	return strings.ToLower(stem(name))
+	s := strings.ToLower(stem(name))
+	for _, suffix := range []string{" (track 1)", " (track 01)"} {
+		s = strings.TrimSuffix(s, suffix)
+	}
+	return s
 }

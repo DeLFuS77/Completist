@@ -20,9 +20,10 @@ import (
 	"github.com/DeLFuS77/completist/internal/tasks"
 )
 
-// DefaultBaseURL is where the DATs are downloaded from; COMPLETIST_DAT_URL replaces it, for
-// a mirror.
-const DefaultBaseURL = "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/no-intro/"
+// DefaultBaseURL is the metadat folder of libretro-database, where the DATs are downloaded
+// from: No-Intro DATs in no-intro, Redump DATs in redump. COMPLETIST_DAT_URL replaces it, for
+// a mirror with the same folders.
+const DefaultBaseURL = "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/"
 
 func baseURL() string {
 	if u := os.Getenv("COMPLETIST_DAT_URL"); u != "" {
@@ -36,7 +37,8 @@ func baseURL() string {
 
 // URL is the address of the DAT of a system.
 func URL(s *systems.System) string {
-	return baseURL() + url.PathEscape(s.LibretroDat+".dat")
+	folder, name, _ := strings.Cut(s.DatPath(), "/")
+	return baseURL() + folder + "/" + url.PathEscape(name)
 }
 
 var client = &http.Client{Timeout: 5 * time.Minute}

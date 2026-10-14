@@ -118,3 +118,19 @@ func TestParseName(t *testing.T) {
 		}
 	}
 }
+
+func TestDiscs(t *testing.T) {
+	info := ParseName("Final Fantasy VII (USA) (Disc 2)")
+	if info.Title != "Final Fantasy VII" || info.Disc != 2 || len(info.Regions) != 1 {
+		t.Fatalf("%+v", info)
+	}
+	if r := Release("Final Fantasy VII (USA) (Disc 2)"); r != "Final Fantasy VII (USA)" {
+		t.Fatalf("release: %q", r)
+	}
+	if r := Release("Policenauts (Japan) (Disc 1) (Rev 1)"); r != "Policenauts (Japan) (Rev 1)" {
+		t.Fatalf("release: %q", r)
+	}
+	if r := Release("Tetris (World)"); r != "Tetris (World)" {
+		t.Fatalf("release: %q", r)
+	}
+}

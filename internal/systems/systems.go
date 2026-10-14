@@ -34,9 +34,11 @@ type System struct {
 	Year int `json:"year"`
 	// plugin that reads its files
 	Plugin string `json:"plugin"`
-	// file name of its DAT in the libretro-database repository (metadat/no-intro), without .dat;
-	// also the folder of its covers in libretro-thumbnails
+	// file name of its DAT in the libretro-database repository, without .dat; also the folder
+	// of its covers in libretro-thumbnails
 	LibretroDat string `json:"libretro"`
+	// folder of its DAT in metadat: no-intro (the default) or redump
+	DatFolder string `json:"-"`
 	// extensions of its files, lower case, with the dot
 	Extensions []string `json:"extensions"`
 	// folder names that hold its files, lower case
@@ -46,6 +48,9 @@ type System struct {
 	// the data may be stored in another byte order (Nintendo 64)
 	N64ByteOrder bool `json:"-"`
 }
+
+// the files of disc images: tracks as BIN files, or a whole disc in a CHD
+var discExtensions = []string{".bin", ".img", ".chd"}
 
 var nesHeader = &Header{Size: 16, Magic: []byte("NES\x1a")}
 var fdsHeader = &Header{Size: 16, Magic: []byte("FDS\x1a")}
@@ -95,6 +100,15 @@ var All = []System{
 	{ID: "megadrive", Name: "Sega - Mega Drive - Genesis", Short: "Mega Drive", Maker: "Sega", Year: 1988, Plugin: "cartridge",
 		LibretroDat: "Sega - Mega Drive - Genesis", Extensions: []string{".md", ".gen", ".smd"},
 		Folders: []string{"megadrive", "mega drive", "genesis", "md"}},
+	{ID: "segacd", Name: "Sega - Mega-CD - Sega CD", Short: "Mega CD", Maker: "Sega", Year: 1991, Plugin: "disc",
+		LibretroDat: "Sega - Mega-CD - Sega CD", DatFolder: "redump", Extensions: discExtensions,
+		Folders: []string{"segacd", "megacd", "mega cd", "mega-cd", "sega cd", "sega-cd"}},
+	{ID: "saturn", Name: "Sega - Saturn", Short: "Saturn", Maker: "Sega", Year: 1994, Plugin: "disc",
+		LibretroDat: "Sega - Saturn", DatFolder: "redump", Extensions: discExtensions,
+		Folders: []string{"saturn", "sega saturn"}},
+	{ID: "psx", Name: "Sony - PlayStation", Short: "PlayStation", Maker: "Sony", Year: 1994, Plugin: "disc",
+		LibretroDat: "Sony - PlayStation", DatFolder: "redump", Extensions: discExtensions,
+		Folders: []string{"psx", "ps1", "psone", "playstation", "sony playstation", "playstation 1"}},
 	{ID: "sega32x", Name: "Sega - 32X", Short: "32X", Maker: "Sega", Year: 1994, Plugin: "cartridge",
 		LibretroDat: "Sega - 32X", Extensions: []string{".32x"},
 		Folders: []string{"sega32x", "32x"}},
@@ -237,6 +251,20 @@ func (s *System) HasExtension(name string) bool {
 		}
 	}
 	return false
+}
+
+// Disc reports whether the system uses disc images.
+func (s *System) Disc() bool {
+	return s.Plugin == "disc"
+}
+
+// DatPath is the path of its DAT in the libretro-database metadat folder.
+func (s *System) DatPath() string {
+	folder := s.DatFolder
+	if folder == "" {
+		folder = "no-intro"
+	}
+	return folder + "/" + s.LibretroDat + ".dat"
 }
 
 // IsGameFile reports whether a file name has the extension of any known system.

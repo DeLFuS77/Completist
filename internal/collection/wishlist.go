@@ -64,8 +64,9 @@ func Wishlist(ctx context.Context, s *store.Store) ([]Wish, error) {
 				item.Regions = strings.Split(r.Regions, ",")
 			}
 		}
-		if e, ok := k.entries[w.Name]; ok && e.Owned {
-			item.Owned = true
+		// counted as its system counts: all the discs, or any version of the game
+		if e, ok := k.entries[w.Name]; ok {
+			item.Owned = e.Owned
 		}
 		out = append(out, item)
 	}

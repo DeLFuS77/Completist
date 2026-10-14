@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.0 (unreleased)
+
+The first disc systems.
+
+- PlayStation, Saturn and Mega CD, with the Redump DATs of libretro-database.
+- A disc is found by its first track: a BIN file, or a CHD, read by Completist itself (LZMA,
+  deflate and FLAC hunks), so no chdman is needed. The other tracks of a disc are not listed as
+  files to review.
+- A game on several discs is one game, complete when every disc is there; the grid tells how
+  many discs you have.
+- Exports point to the CUE sheet or the CHD of each disc.
+
 ## 0.3.0 (unreleased)
 
 The end of phase 1, and the statistics, the wishlist and the exports.

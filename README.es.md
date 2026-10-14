@@ -2,7 +2,7 @@
 
 **El gestor de ROMs que te dice lo que te falta.**
 
-Completist compara tus ROMs con los DAT de No-Intro y te enseña, sistema por sistema, lo que
+Completist compara tus ROMs con los DAT de No-Intro y Redump y te enseña, sistema por sistema, lo que
 tienes, lo que te falta y qué archivos están dañados, duplicados o sin identificar. Funciona en tu
 NAS, tu servidor Unraid o tu ordenador, como un solo programa pequeño con su base de datos dentro.
 
@@ -62,6 +62,10 @@ Sistemas de cartucho con DAT de No-Intro: NES, Famicom Disk System, Super Ninten
 Virtual Boy, Game Boy, Game Boy Color, Game Boy Advance, Nintendo DS, Pokémon Mini, SG-1000,
 Master System, Mega Drive, 32X, Game Gear, PC Engine, Atari 2600, Atari 7800, Lynx, Neo Geo Pocket
 (y Color), WonderSwan (y Color), ColecoVision, Intellivision y Vectrex.
+
+Sistemas de disco con DAT de Redump: PlayStation, Saturn y Mega CD. Un disco se reconoce por su
+primera pista, como archivo BIN (con su CUE) o dentro de un CHD, que Completist lee por sí mismo:
+no hace falta chdman. Un juego de varios discos cuenta una vez, cuando los tienes todos.
 
 ## Empezar
 
@@ -145,7 +149,7 @@ fallidos se frenan y después se bloquean.
 | `COMPLETIST_ALLOWED_HOSTS` | | Más nombres de host a los que responde mientras no hay usuarios |
 | `COMPLETIST_DAT_UPDATE_HOURS` | `168` | Cada cuánto se actualizan los DAT descargados; `0` lo desactiva |
 | `COMPLETIST_SCAN_WORKERS` | hasta 4 | Archivos que se leen a la vez |
-| `COMPLETIST_DAT_URL` | libretro-database en GitHub | De dónde se descargan los DAT, para usar un espejo |
+| `COMPLETIST_DAT_URL` | la carpeta metadat de libretro-database | De dónde se descargan los DAT, para usar un espejo con sus carpetas `no-intro` y `redump` |
 | `COMPLETIST_COVERS_URL` | thumbnails.libretro.com | De dónde se descargan las imágenes, para usar un espejo |
 | `COMPLETIST_AUTH_USERNAME`, `COMPLETIST_AUTH_PASSWORD` | | Un administrador |
 | `COMPLETIST_ALLOW_REMOTE_WITHOUT_LOGIN` | | `true` si otro servicio ya protege la app |
@@ -161,9 +165,9 @@ en el [README en inglés](README.md#api).
 
 1. **Hecho**: el núcleo, los sistemas de cartucho, los DAT, los modos de recuento, la nueva
    interfaz, las portadas guardadas por el servidor, las estadísticas, la lista de deseos y la
-   exportación a ES-DE y RetroArch.
-2. Sistemas de disco: PlayStation, Saturn, Mega CD, Dreamcast, GameCube y Wii, identificando los
-   CHD y RVZ por las sumas de sus pistas.
+   exportación a ES-DE y RetroArch, y los primeros sistemas de disco: PlayStation, Saturn y Mega
+   CD, con BIN/CUE y CHD.
+2. Más sistemas de disco: Dreamcast (GDI), GameCube y Wii (ISO, RVZ) y PlayStation 2.
 3. Compresión comprobada contra el DAT antes de borrar el original, renombrado a los nombres del
    DAT con deshacer, y el plugin de Switch con el código de Switch Library Manager Web.
 

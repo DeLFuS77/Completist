@@ -116,6 +116,8 @@ export interface Entry {
 	files: number;
 	versions: number;
 	wanted: boolean;
+	discs?: number;
+	discsOwned?: number;
 }
 
 export interface GameList {

@@ -11,14 +11,17 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/DeLFuS77/completist/internal/chd"
 	"github.com/DeLFuS77/completist/internal/platform"
 	_ "github.com/DeLFuS77/completist/internal/platform/cartridge"
+	_ "github.com/DeLFuS77/completist/internal/platform/disc"
 	"github.com/DeLFuS77/completist/internal/store"
 	"github.com/DeLFuS77/completist/internal/systems"
 	"github.com/DeLFuS77/completist/internal/tasks"
@@ -172,7 +175,29 @@ func (sc *Scanner) scanLibrary(ctx context.Context, taskID int64, lib store.Libr
 			}
 			return nil
 		}
+		if strings.EqualFold(filepath.Ext(path), ".chd") {
+			// a disc image: its data track is read like an entry of an archive
+			key := store.Key{Path: path}
+			entries, err := chdEntries(path)
+			if err != nil {
+				sc.tasks.Warn(taskID, tasks.NoteUnreadable, fmt.Sprintf("%s: %v", path, err))
+				return nil
+			}
+			for _, e := range entries {
+				key.Entry = e.name
+				seen[key] = true
+				if c, ok := known[key]; ok && c.Ok && c.Size == int64(e.size) && c.Mtime == mtime {
+					continue
+				}
+				todo = append(todo, candidate{library: lib, path: path, entry: e.name, size: int64(e.size), mtime: mtime, system: system})
+			}
+			return nil
+		}
 		if !systems.IsGameFile(path) && !(system != nil && strings.EqualFold(filepath.Ext(path), ".bin")) {
+			return nil
+		}
+		if laterTrack(path) {
+			// audio tracks of a disc: the DATs identify a disc by its first track
 			return nil
 		}
 		key := store.Key{Path: path}
@@ -201,6 +226,35 @@ func (sc *Scanner) scanLibrary(ctx context.Context, taskID int64, lib store.Libr
 	}
 	return len(seen), len(todo), nil
 }
+
+var trackPattern = regexp.MustCompile(`(?i)\(track 0*(\d+)\)`)
+
+// laterTrack reports whether a file is a track of a disc after the first, such as
+// "Game (USA) (Track 2).bin".
+func laterTrack(path string) bool {
+	m := trackPattern.FindStringSubmatch(filepath.Base(path))
+	return m != nil && m[1] != "1"
+}
+
+// chdEntries lists the track of a CHD that identifies it: the first, when it holds data.
+func chdEntries(path string) ([]zipEntry, error) {
+	c, err := chd.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+	tracks, err := c.Tracks()
+	if err != nil {
+		return nil, err
+	}
+	if len(tracks) == 0 || tracks[0].Audio() {
+		return nil, nil
+	}
+	return []zipEntry{{name: chdEntryName, size: uint64(tracks[0].Size())}}, nil
+}
+
+// chdEntryName is the entry of the data track of a CHD.
+const chdEntryName = "Track 1.bin"
 
 type zipEntry struct {
 	name   string
@@ -341,6 +395,12 @@ func (sc *Scanner) hashGroup(group []candidate) []store.File {
 		return []store.File{sc.hashOne(group[0], nil)}
 	}
 	out := make([]store.File, 0, len(group))
+	if strings.EqualFold(filepath.Ext(group[0].path), ".chd") {
+		for _, c := range group {
+			out = append(out, sc.hashCHD(c))
+		}
+		return out
+	}
 	z, err := zip.OpenReader(group[0].path)
 	if err != nil {
 		for _, c := range group {
@@ -418,5 +478,48 @@ func (sc *Scanner) hashOne(c candidate, entry *zip.File) store.File {
 	if len(hashes) > 1 {
 		f.AltForm, f.AltSize, f.AltCRC, f.AltSHA1 = hashes[1].Form, hashes[1].Size, hashes[1].CRC, hashes[1].SHA1
 	}
+	return f
+}
+
+// hashCHD hashes the data track of a CHD as the BIN file it was made from.
+func (sc *Scanner) hashCHD(c candidate) store.File {
+	f := sc.newFile(c)
+	// compared with the DAT by the name of the image, not of its track
+	f.Stem = store.Stem(filepath.Base(c.path))
+	fail := func(err error) store.File {
+		f.Status, f.Error = "error", err.Error()
+		return f
+	}
+	img, err := chd.Open(c.path)
+	if err != nil {
+		return fail(err)
+	}
+	defer img.Close()
+	tracks, err := img.Tracks()
+	if err != nil {
+		return fail(err)
+	}
+	if len(tracks) == 0 || c.entry != chdEntryName {
+		return fail(errors.New(c.entry + " is no longer in the image"))
+	}
+	system := c.system
+	if system == nil || !system.Disc() {
+		system = &systems.System{ID: "", Plugin: "disc"}
+	}
+	plugin, err := platform.For(system)
+	if err != nil {
+		return fail(err)
+	}
+	pr, pw := io.Pipe()
+	go func() {
+		_, err := tracks[0].WriteTo(pw)
+		pw.CloseWithError(err)
+	}()
+	hashes, err := plugin.Hash(system, pr, tracks[0].Size())
+	pr.CloseWithError(io.ErrClosedPipe)
+	if err != nil {
+		return fail(err)
+	}
+	f.Size, f.CRC, f.MD5, f.SHA1 = hashes[0].Size, hashes[0].CRC, hashes[0].MD5, hashes[0].SHA1
 	return f
 }
