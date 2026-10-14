@@ -12,6 +12,7 @@
 		completeSets: boolean;
 		damaged: boolean;
 		datChanges: boolean;
+		wishlist: boolean;
 	};
 	let o = $state<Options | null>(null);
 	let errors = $state<Record<string, string>>({});
@@ -53,6 +54,7 @@
 		}
 	}
 	const events: { key: keyof Options; name: string; text: string }[] = [
+		{ key: 'wishlist', name: 'Games of your wishlist', text: 'When a game you want is in your collection at last.' },
 		{ key: 'newGames', name: 'New games in your collection', text: 'After a scan, the games that were not there before.' },
 		{ key: 'completeSets', name: 'Complete sets', text: 'When nothing is missing any more in a system.' },
 		{ key: 'damaged', name: 'Damaged or modified files', text: 'Files with the name of a game but other content.' },

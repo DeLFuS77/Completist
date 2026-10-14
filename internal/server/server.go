@@ -63,6 +63,7 @@ func (s *Server) Handler() http.Handler {
 	s.routes(mux)
 	s.adminRoutes(mux)
 	s.coverRoutes(mux)
+	s.extraRoutes(mux)
 	mux.Handle("/", s.ui())
 
 	var h http.Handler = mux
@@ -104,6 +105,7 @@ func decode(r *http.Request, value any) error {
 
 func (s *Server) changed() {
 	s.Progress.Invalidate()
+	s.recordHistory(context.Background())
 }
 
 // record adds an action to the activity log, with the name of who did it.
@@ -271,12 +273,16 @@ func (s *Server) routes(mux *http.ServeMux) {
 			s.fail(w, err)
 			return
 		}
+		if err := collection.MarkWanted(r.Context(), s.Store, id, entries); err != nil {
+			s.fail(w, err)
+			return
+		}
 		q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
 		filter := r.URL.Query().Get("filter")
 		region := r.URL.Query().Get("region")
 		out := make([]collection.Entry, 0, len(entries))
 		for _, e := range entries {
-			if filter == "have" && !e.Owned || filter == "missing" && e.Owned {
+			if filter == "have" && !e.Owned || filter == "missing" && e.Owned || filter == "wanted" && !e.Wanted {
 				continue
 			}
 			if q != "" && !strings.Contains(strings.ToLower(e.Name), q) {
@@ -367,6 +373,14 @@ func (s *Server) routes(mux *http.ServeMux) {
 			}
 		}
 		sys, _ := systems.ByID(system)
+		wanted := false
+		if wishes, err := s.Store.Wishes(r.Context()); err == nil {
+			for _, wish := range wishes {
+				if wish.System == system && wish.Name == g.Name {
+					wanted = true
+				}
+			}
+		}
 		regions := []string{}
 		if g.Regions != "" {
 			regions = strings.Split(g.Regions, ",")
@@ -378,7 +392,7 @@ func (s *Server) routes(mux *http.ServeMux) {
 		writeJSON(w, http.StatusOK, map[string]any{
 			"id": g.ID, "name": g.Name, "title": g.Title, "system": sys, "regions": regions, "languages": languages,
 			"flags": dat.Flags(g.Flags).Names(), "revision": g.Revision, "owned": g.Have > 0,
-			"files": files, "roms": roms, "versions": versions,
+			"files": files, "roms": roms, "versions": versions, "wanted": wanted,
 		})
 	})
 

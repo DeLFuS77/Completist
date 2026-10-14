@@ -55,11 +55,9 @@ make dev     # interface rebuilt on change, served from disk
 
 ## Roadmap
 
-1. Statistics; wishlist;
-   export to ES-DE gamelist.xml and RetroArch playlists.
-2. Disc systems (PlayStation, Saturn, Mega CD, Dreamcast, GameCube, Wii): Redump DATs, CHD and
+1. Disc systems (PlayStation, Saturn, Mega CD, Dreamcast, GameCube, Wii): Redump DATs, CHD and
    RVZ hashed per track (chdman, dolphin-tool in the image).
-3. Compression verified against the DAT before deleting originals; renaming to DAT names with
+2. Compression verified against the DAT before deleting originals; renaming to DAT names with
    undo; the Switch plugin from Switch Library Manager Web.
 
 Known limits: 1G1R groups by title when the DAT has no parent/clone links (libretro DATs have

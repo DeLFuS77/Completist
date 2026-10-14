@@ -38,11 +38,12 @@
 		const q = query.trim().toLowerCase();
 		return list.items.filter(
 			(e) =>
-				(filter === 'all' || (filter === 'have' ? e.owned : !e.owned)) &&
+				(filter === 'all' || (filter === 'wanted' ? e.wanted : filter === 'have' ? e.owned : !e.owned)) &&
 				(!q || e.name.toLowerCase().includes(q)) &&
 				(!region || e.regions.includes(region))
 		);
 	});
+	const wantedCount = $derived(list?.items.filter((e) => e.wanted).length ?? 0);
 	const regions = $derived(Object.entries(list?.regions ?? {}).sort((a, b) => b[1] - a[1]).map(([r]) => r));
 
 	// the grid grows as you scroll, so a system with thousands of games opens at once
@@ -122,6 +123,7 @@
 				<button class="chip" aria-pressed={filter === 'all'} onclick={() => setParam('show', null)}>{t('All')} <span class="t-num opacity-70">{n(list.total)}</span></button>
 				<button class="chip" aria-pressed={filter === 'have'} onclick={() => setParam('show', 'have')}>{t('Owned')} <span class="t-num opacity-70">{n(progress.have)}</span></button>
 				<button class="chip" aria-pressed={filter === 'missing'} onclick={() => setParam('show', 'missing')}>{t('Missing games')} <span class="t-num opacity-70">{n(progress.missing)}</span></button>
+				{#if wantedCount}<button class="chip" aria-pressed={filter === 'wanted'} onclick={() => setParam('show', 'wanted')}><Icon name="star" size={14} filled />{t('Wishlist')} <span class="t-num opacity-70">{n(wantedCount)}</span></button>{/if}
 			</div>
 			<div class="ml-auto flex flex-1 flex-wrap items-center justify-end gap-2 sm:flex-none">
 				<label class="relative min-w-48 flex-1 sm:flex-none">
@@ -154,6 +156,7 @@
 						<a href="/games/{e.id}" class="flex items-center gap-3 py-2.5 hover:text-gold">
 							<span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background: {e.owned ? color : 'transparent'}; border: 1.5px solid {e.owned ? color : 'var(--color-faint)'}"></span>
 							<span class="flex-1 truncate" class:text-mute={!e.owned}>{e.name}</span>
+							{#if e.wanted && !e.owned}<span class="text-gold"><Icon name="star" size={15} filled label={t('On your wishlist')} /></span>{/if}
 							{#if e.versions > 1}<span class="text-sm text-faint">{plural('{n} version', '{n} versions', e.versions)}</span>{/if}
 						</a>
 					</li>
@@ -164,8 +167,9 @@
 				{#each items.slice(0, shown) as e (e.id)}
 					<li>
 						<a href="/games/{e.id}" class="group block">
-							<div class="transition-transform duration-200 ease-[var(--ease-out-soft)] group-hover:-translate-y-1">
+							<div class="relative transition-transform duration-200 ease-[var(--ease-out-soft)] group-hover:-translate-y-1">
 								<Cover system={id} libretro={progress.system.libretro} name={e.name} title={e.title} owned={e.owned} />
+								{#if e.wanted && !e.owned}<span class="absolute right-1.5 top-1.5 rounded-full bg-night/85 p-1 text-gold"><Icon name="star" size={14} filled label={t('On your wishlist')} /></span>{/if}
 							</div>
 							<div class="mt-2 line-clamp-2 text-sm leading-snug" class:text-mute={!e.owned}>{e.title}</div>
 							<div class="text-xs text-faint">{e.regions.map((r) => t(r)).join(', ')}</div>

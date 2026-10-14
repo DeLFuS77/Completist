@@ -35,6 +35,8 @@ const (
 	UserPasswordReset = "Changed the password of a user"
 	UserDeleted       = "Deleted a user"
 	CoversCleared     = "Removed the stored images"
+	WishAdded         = "Added to the wishlist"
+	WishRemoved       = "Removed from the wishlist"
 )
 
 // Entry is an action of a user.

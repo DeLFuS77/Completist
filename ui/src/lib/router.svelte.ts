@@ -5,6 +5,8 @@ export type Route =
 	| { name: 'system'; id: string }
 	| { name: 'game'; id: number }
 	| { name: 'tasks' }
+	| { name: 'stats' }
+	| { name: 'wishlist' }
 	| { name: 'settings'; tab: string }
 	| { name: 'notfound' };
 
@@ -14,6 +16,8 @@ function parse(pathname: string): Route {
 	if (parts[0] === 'systems' && parts[1]) return { name: 'system', id: parts[1] };
 	if (parts[0] === 'games' && parts[1] && /^\d+$/.test(parts[1])) return { name: 'game', id: Number(parts[1]) };
 	if (parts[0] === 'tasks') return { name: 'tasks' };
+	if (parts[0] === 'stats') return { name: 'stats' };
+	if (parts[0] === 'wishlist') return { name: 'wishlist' };
 	if (parts[0] === 'settings') return { name: 'settings', tab: parts[1] ?? 'libraries' };
 	return { name: 'notfound' };
 }

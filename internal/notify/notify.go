@@ -45,10 +45,12 @@ type Options struct {
 	CompleteSets bool   `json:"completeSets"`
 	Damaged      bool   `json:"damaged"`
 	DatChanges   bool   `json:"datChanges"`
+	// a game of the wishlist is in the collection now
+	Wishlist bool `json:"wishlist"`
 }
 
 func DefaultOptions() Options {
-	return Options{Language: "en", NewGames: true, CompleteSets: true, Damaged: true, DatChanges: false}
+	return Options{Language: "en", NewGames: true, CompleteSets: true, Damaged: true, DatChanges: false, Wishlist: true}
 }
 
 // Configured reports whether a channel is set.
@@ -98,7 +100,7 @@ func (o Options) Validate() []FieldError {
 
 // Item is one thing to report.
 type Item struct {
-	Kind   string `json:"kind"` // new, complete, damaged, dat, test
+	Kind   string `json:"kind"` // new, wish, complete, damaged, dat, test
 	System string `json:"system,omitempty"`
 	Name   string `json:"name"`
 	Count  int    `json:"count,omitempty"`
@@ -190,6 +192,17 @@ func (n *Notifier) current(ctx context.Context) (state, map[string]Item, error) 
 		items[key] = Item{Kind: "damaged", System: system, Name: name}
 	}
 	rows.Close()
+	wishes, err := collection.Wishlist(ctx, n.Store)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, w := range wishes {
+		if w.Owned {
+			key := "wish:" + w.System + ":" + w.Name
+			s[key] = true
+			items[key] = Item{Kind: "wish", System: w.System, Name: w.Name}
+		}
+	}
 	all, err := n.Progress.All(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -238,15 +251,29 @@ func (n *Notifier) AfterScan(ctx context.Context) {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
+	// a game of the wishlist is told once, as such, and not again as new
+	wished := map[string]bool{}
+	if o.Wishlist {
+		for _, key := range keys {
+			if item := items[key]; item.Kind == "wish" && !previous[key] {
+				wished[item.System+":"+item.Name] = true
+			}
+		}
+	}
 	for _, key := range keys {
 		if previous[key] {
 			continue
 		}
 		item := items[key]
-		if (item.Kind == "new" && o.NewGames) || (item.Kind == "complete" && o.CompleteSets) || (item.Kind == "damaged" && o.Damaged) {
+		if item.Kind == "new" && wished[item.System+":"+item.Name] {
+			continue
+		}
+		if (item.Kind == "new" && o.NewGames) || (item.Kind == "wish" && o.Wishlist) || (item.Kind == "complete" && o.CompleteSets) || (item.Kind == "damaged" && o.Damaged) {
 			news = append(news, item)
 		}
 	}
+	// the wishlist first: the best news
+	sort.SliceStable(news, func(i, j int) bool { return news[i].Kind == "wish" && news[j].Kind != "wish" })
 	if len(news) > 0 {
 		if err := Send(o, news); err != nil {
 			// keep the previous state, so the news are reported after the next scan
@@ -287,6 +314,7 @@ var texts = map[string]map[string]string{
 	"en": {
 		"title":    "Completist: %d news",
 		"new":      "New in your collection: %s",
+		"wish":     "From your wishlist, now in your collection: %s",
 		"complete": "Set complete: %s (%d games)",
 		"damaged":  "Damaged or modified file: %s",
 		"dat":      "%s: %d new entries in the DAT",
@@ -296,6 +324,7 @@ var texts = map[string]map[string]string{
 	"es": {
 		"title":    "Completist: %d novedades",
 		"new":      "Nuevo en tu colección: %s",
+		"wish":     "De tu lista de deseos, ya en tu colección: %s",
 		"complete": "Set completo: %s (%d juegos)",
 		"damaged":  "Archivo dañado o modificado: %s",
 		"dat":      "%s: %d entradas nuevas en el DAT",

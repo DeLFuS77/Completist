@@ -26,6 +26,7 @@ import (
 	"github.com/DeLFuS77/completist/internal/notify"
 	"github.com/DeLFuS77/completist/internal/scanner"
 	"github.com/DeLFuS77/completist/internal/server"
+	"github.com/DeLFuS77/completist/internal/stats"
 	"github.com/DeLFuS77/completist/internal/store"
 	"github.com/DeLFuS77/completist/internal/tasks"
 	"github.com/DeLFuS77/completist/internal/watcher"
@@ -97,14 +98,22 @@ func run(log *slog.Logger, dataDir string, address string) error {
 	progress := collection.NewCache(st)
 	notifier := &notify.Notifier{Store: st, Progress: progress, DataFolder: dataDir, Log: log}
 	sc := scanner.New(st, taskLog, envInt("COMPLETIST_SCAN_WORKERS", 0))
+	// today's count, for the history of the statistics
+	recordHistory := func() {
+		if err := stats.Record(context.Background(), st, progress, time.Now()); err != nil {
+			log.Warn("the history could not be saved", "error", err)
+		}
+	}
 	sc.OnChange = func() {
 		progress.Invalidate()
 		notifier.AfterScan(context.Background())
+		recordHistory()
 	}
 	backups := &backup.Manager{DataFolder: dataDir, Store: st, Auth: authn, Activity: activityLog}
 	backups.OnRestore = func() {
 		progress.Invalidate()
 		notifier.Record(context.Background())
+		recordHistory()
 		sc.Start(tasks.TriggerSettings)
 	}
 
@@ -137,7 +146,7 @@ func run(log *slog.Logger, dataDir string, address string) error {
 			Log:          log,
 		})
 	}
-	go schedule(ctx, log, st, taskLog, sc, progress, notifier, backups)
+	go schedule(ctx, log, st, taskLog, sc, progress, notifier, backups, recordHistory)
 
 	errs := make(chan error, 1)
 	go func() {
@@ -200,7 +209,7 @@ func addLibrariesFromEnv(log *slog.Logger, st *store.Store) {
 // schedule scans at start, updates the DATs now and then and saves a copy of the state every
 // week. The watcher scans when files change; the scheduled scan is a safety net. Unchanged
 // files are not read again, so a scan of a library already known is quick.
-func schedule(ctx context.Context, log *slog.Logger, st *store.Store, taskLog *tasks.Log, sc *scanner.Scanner, progress *collection.Cache, notifier *notify.Notifier, backups *backup.Manager) {
+func schedule(ctx context.Context, log *slog.Logger, st *store.Store, taskLog *tasks.Log, sc *scanner.Scanner, progress *collection.Cache, notifier *notify.Notifier, backups *backup.Manager, recordHistory func()) {
 	scanEvery := time.Duration(envInt("COMPLETIST_SCAN_INTERVAL_MINUTES", 360)) * time.Minute
 	datEvery := time.Duration(envInt("COMPLETIST_DAT_UPDATE_HOURS", 24*7)) * time.Hour
 
@@ -235,6 +244,7 @@ func schedule(ctx context.Context, log *slog.Logger, st *store.Store, taskLog *t
 					datsync.Start(ctx, st, taskLog, tasks.TriggerSchedule, ids, progress.Invalidate, func(changes []store.DatChange) {
 						progress.Invalidate()
 						notifier.AfterDatUpdate(ctx, changes)
+						recordHistory()
 					})
 				}
 			}

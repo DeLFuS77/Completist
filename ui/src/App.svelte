@@ -8,6 +8,8 @@
 	import System from './pages/System.svelte';
 	import Game from './pages/Game.svelte';
 	import Tasks from './pages/Tasks.svelte';
+	import Stats from './pages/Stats.svelte';
+	import Wishlist from './pages/Wishlist.svelte';
 	import Settings from './pages/Settings.svelte';
 	import Login from './pages/Login.svelte';
 
@@ -39,13 +41,15 @@
 		const r = route;
 		if (href === '/') return r.name === 'home';
 		if (href === '/tasks') return r.name === 'tasks';
+		if (href === '/stats') return r.name === 'stats';
+		if (href === '/wishlist') return r.name === 'wishlist';
 		if (href === '/settings') return r.name === 'settings';
 		return r.name === 'system' && href === `/systems/${r.id}`;
 	};
 	$effect(() => {
 		const r = route;
 		const sys = r.name === 'system' ? systems.find((s) => s.system.id === r.id)?.system.short : '';
-		const names: Record<string, string> = { tasks: t('Tasks'), settings: t('Settings') };
+		const names: Record<string, string> = { tasks: t('Tasks'), settings: t('Settings'), stats: t('Statistics'), wishlist: t('Wishlist') };
 		document.title = sys ? `${sys} – Completist` : names[r.name] ? `${names[r.name]} – Completist` : 'Completist';
 	});
 </script>
@@ -67,6 +71,8 @@
 			</div>
 			<nav class="flex flex-1 flex-col gap-1 overflow-y-auto px-3 pb-4">
 				<a href="/" class="navlink" aria-current={current('/') ? 'page' : undefined}><Icon name="home" />{t('Home')}</a>
+				<a href="/stats" class="navlink" aria-current={current('/stats') ? 'page' : undefined}><Icon name="chart" />{t('Statistics')}</a>
+				<a href="/wishlist" class="navlink" aria-current={current('/wishlist') ? 'page' : undefined}><Icon name="star" />{t('Wishlist')}</a>
 				{#if systems.length}
 					<div class="mt-5 px-3 pb-2 text-sm text-faint">{t('Systems')}</div>
 					{#each systems as s (s.system.id)}
@@ -112,6 +118,8 @@
 				{:else if route.name === 'system'}{#key route.id}<System id={route.id} />{/key}
 				{:else if route.name === 'game'}{#key route.id}<Game id={route.id} />{/key}
 				{:else if route.name === 'tasks'}<Tasks />
+				{:else if route.name === 'stats'}<Stats />
+				{:else if route.name === 'wishlist'}<Wishlist />
 				{:else if route.name === 'settings'}<Settings tab={route.tab} />
 				{:else}
 					<h1 class="t-title">{t('This page does not exist')}</h1>

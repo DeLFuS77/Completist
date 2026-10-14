@@ -2,11 +2,17 @@
 
 ## 0.3.0 (unreleased)
 
-The end of phase 1.
+The end of phase 1, and the statistics, the wishlist and the exports.
 
 - Box art, screenshots and title screens are downloaded by the server once and kept in the data
   folder, so pages load at once and work without internet. A clone without its own image shows
   its parent's. The settings of the libraries show how much space they take and can remove them.
+- Statistics: how complete the collection was day by day, by maker and by region, the systems
+  closest to complete, the space of each one and the games added lately.
+- A wishlist: add a missing game from its page; it is marked in the grid of its system, and a
+  notification can tell you when it reaches your collection.
+- Exports to RetroArch playlists and ES-DE gamelists, in the settings, with the paths of the
+  device that plays the games.
 - The empty activity log no longer breaks the settings of the users.
 - Notification messages are in the language of the interface until you choose one.
 

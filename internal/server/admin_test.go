@@ -22,6 +22,7 @@ import (
 	"github.com/DeLFuS77/completist/internal/covers"
 	"github.com/DeLFuS77/completist/internal/notify"
 	"github.com/DeLFuS77/completist/internal/scanner"
+	"github.com/DeLFuS77/completist/internal/stats"
 	"github.com/DeLFuS77/completist/internal/store"
 	"github.com/DeLFuS77/completist/internal/tasks"
 	"github.com/DeLFuS77/completist/internal/watcher"
@@ -60,6 +61,7 @@ func newFullFixture(t *testing.T) *fullFixture {
 	sc.OnChange = func() {
 		progress.Invalidate()
 		n.AfterScan(context.Background())
+		stats.Record(context.Background(), st, progress, time.Now())
 	}
 	b := &backup.Manager{DataFolder: data, Store: st, Auth: a, Activity: act}
 	b.OnRestore = progress.Invalidate

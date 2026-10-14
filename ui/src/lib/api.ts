@@ -115,6 +115,7 @@ export interface Entry {
 	owned: boolean;
 	files: number;
 	versions: number;
+	wanted: boolean;
 }
 
 export interface GameList {
@@ -154,6 +155,45 @@ export interface GameDetail {
 	files: GameFile[];
 	roms: { name: string; size: number; crc: string; sha1: string }[];
 	versions: { id: number; name: string; regions: string[]; flags: string[]; owned: boolean }[];
+	wanted: boolean;
+}
+
+export interface Wish {
+	system: string;
+	name: string;
+	added: string;
+	id: number;
+	title: string;
+	regions: string[];
+	owned: boolean;
+	inDat: boolean;
+}
+
+export interface Recent {
+	id: number;
+	system: string;
+	name: string;
+	title: string;
+	since: string;
+}
+
+export interface StatGroup {
+	name: string;
+	systems?: number;
+	have: number;
+	total: number;
+	percent: number;
+}
+
+export interface Stats {
+	summary: Summary;
+	history: { day: string; have: number; total: number; percent: number; bytes: number }[];
+	makers: StatGroup[];
+	regions: StatGroup[];
+	sizes: { system: string; files: number; bytes: number }[];
+	closest: { system: string; have: number; missing: number; percent: number }[];
+	recent: Recent[];
+	wishlist: { total: number; owned: number };
 }
 
 export interface Library {

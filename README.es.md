@@ -34,6 +34,12 @@ NAS, tu servidor Unraid o tu ordenador, como un solo programa pequeño con su ba
 - **Se actualiza solo**: detecta cuando se añaden, quitan o cambian archivos y vuelve a escanear;
   las carpetas de red se revisan cada dos minutos. Los archivos que no cambian no se leen dos
   veces, así que 10.000 archivos se comprueban en menos de un segundo.
+- **Estadísticas**: lo completa que estaba la colección día a día, por fabricante y por región,
+  los sistemas más cerca de completarse, el espacio de cada uno y los juegos añadidos hace poco.
+- **Una lista de deseos** con los juegos que buscas, marcados en la cuadrícula, y un aviso cuando
+  uno llega a tu colección.
+- **Exporta** a listas de RetroArch y gamelists de ES-DE, con los nombres de los DAT, para que
+  también ahí salgan las portadas.
 - **Te avisa** por Discord, Telegram o cualquier webhook: juegos nuevos en tu colección, sets que
   completas, archivos dañados y entradas nuevas en los DAT.
 - **Guarda una copia** de las bibliotecas, los DAT, los ajustes y los usuarios cada semana, y
@@ -153,11 +159,11 @@ en el [README en inglés](README.md#api).
 ## Plan
 
 1. **Hecho**: el núcleo, los sistemas de cartucho, los DAT, los modos de recuento, la nueva
-   interfaz y las portadas guardadas por el servidor.
-2. Estadísticas, lista de deseos y exportación a ES-DE y RetroArch.
-3. Sistemas de disco: PlayStation, Saturn, Mega CD, Dreamcast, GameCube y Wii, identificando los
+   interfaz, las portadas guardadas por el servidor, las estadísticas, la lista de deseos y la
+   exportación a ES-DE y RetroArch.
+2. Sistemas de disco: PlayStation, Saturn, Mega CD, Dreamcast, GameCube y Wii, identificando los
    CHD y RVZ por las sumas de sus pistas.
-4. Compresión comprobada contra el DAT antes de borrar el original, renombrado a los nombres del
+3. Compresión comprobada contra el DAT antes de borrar el original, renombrado a los nombres del
    DAT con deshacer, y el plugin de Switch con el código de Switch Library Manager Web.
 
 ## Compilar

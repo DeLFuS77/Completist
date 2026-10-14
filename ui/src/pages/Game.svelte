@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { get, type GameDetail } from '../lib/api';
-	import { collection } from '../lib/state.svelte';
+	import { del, get, put, type GameDetail } from '../lib/api';
+	import { collection, session } from '../lib/state.svelte';
 	import { coverUrl } from '../lib/covers';
 	import { systemColor, systemTint } from '../lib/systems';
 	import { t, n, bytes, date } from '../lib/i18n.svelte';
@@ -20,6 +20,23 @@
 			})
 			.catch((e) => (error = t(e.message)));
 	});
+
+	const isAdmin = $derived(session.status?.isAdmin ?? false);
+	let wishBusy = $state(false);
+	async function toggleWish() {
+		if (!game) return;
+		wishBusy = true;
+		const path = `/api/wishlist/${encodeURIComponent(game.system.id)}/${encodeURIComponent(game.name)}`;
+		try {
+			if (game.wanted) await del(path);
+			else await put(path);
+			game.wanted = !game.wanted;
+		} catch (e) {
+			error = t((e as Error).message);
+		} finally {
+			wishBusy = false;
+		}
+	}
 
 	const color = $derived(game ? systemColor(game.system.id) : '');
 	const snap = $derived(game ? coverUrl(game.system.id, game.name, 'Named_Snaps') : '');
@@ -72,6 +89,13 @@
 						{#if game.revision}<span class="chip">{t('Revision {n}', { n: game.revision })}</span>{/if}
 						{#each game.flags as f}<span class="chip">{t(flagName[f] ?? f)}</span>{/each}
 					</div>
+					{#if isAdmin && (!game.owned || game.wanted)}
+						<button class="btn mt-6" class:btn-primary={!game.wanted} class:btn-quiet={game.wanted} onclick={toggleWish} disabled={wishBusy} aria-pressed={game.wanted}>
+							<Icon name="star" filled={game.wanted} />{game.wanted ? t('On your wishlist') : t('Add to the wishlist')}
+						</button>
+					{:else if game.wanted}
+						<p class="mt-6 inline-flex items-center gap-2 text-gold"><Icon name="star" filled />{t('On your wishlist')}</p>
+					{/if}
 				</div>
 			</div>
 		</div>

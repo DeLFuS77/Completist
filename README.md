@@ -33,6 +33,12 @@ Unraid server or your computer, as one small program with its database inside.
 - **Stays up to date**: Completist notices when files are added, removed or replaced and scans
   again; network shares are checked every two minutes. Unchanged files are not read twice, so
   10,000 files are checked in under a second.
+- **Statistics**: how complete the collection was day by day, by maker and by region, the
+  systems closest to complete, the space each one takes and the games added lately.
+- **A wishlist** of the games you are looking for, marked in the grid, with a notification when
+  one reaches your collection.
+- **Exports** to RetroArch playlists and ES-DE gamelists, with the DAT names, so their box art
+  shows too.
 - **Tells you the news** through Discord, Telegram or any webhook: games new in your collection,
   sets you complete, damaged files found and new entries in the DATs.
 - **Keeps a backup** of the libraries, DATs, settings and users every week, and keeps the last five;
@@ -154,6 +160,9 @@ is required (a read-only user is enough to read).
 | `GET /api/overview` | The summary and the progress of every system |
 | `GET /api/systems/{id}/games?filter=missing` | The games of a system: `have`, `missing` or all |
 | `GET /api/games/{id}` | A game, its versions and your files |
+| `GET /api/stats` | The statistics, with the history day by day |
+| `GET /api/wishlist` | The wishlist; `PUT` or `DELETE /api/wishlist/{system}/{name}` changes it |
+| `GET /api/export/retroarch?from=&to=`, `GET /api/export/esde` | The exports, as zip files |
 | `GET /api/covers/{system}/{boxart\|snap\|title}/{name}.png` | An image of a game, by its name in the DAT |
 | `POST /api/scan` | Scan the libraries |
 | `POST /api/dats/sync` | Download the DATs |
@@ -163,11 +172,10 @@ is required (a read-only user is enough to read).
 ## Roadmap
 
 1. **Done**: the core, cartridge systems, DATs, counting modes, the new interface, covers kept by
-   the server.
-2. Statistics, a wishlist, and exports to ES-DE and RetroArch.
-3. Disc systems: PlayStation, Saturn, Mega CD, Dreamcast, GameCube and Wii, with CHD and RVZ
+   the server, statistics, a wishlist, and exports to ES-DE and RetroArch.
+2. Disc systems: PlayStation, Saturn, Mega CD, Dreamcast, GameCube and Wii, with CHD and RVZ
    files identified by the checksums of their tracks.
-4. Compression checked against the DAT before an original is deleted, renaming to the DAT names
+3. Compression checked against the DAT before an original is deleted, renaming to the DAT names
    with undo, and the Switch plugin from Switch Library Manager Web.
 
 ## Building

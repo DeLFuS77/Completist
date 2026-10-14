@@ -1,6 +1,6 @@
 <script lang="ts">
 	// A few line icons, drawn on a 24 px grid with the current colour.
-	let { name, size = 18, label = '' }: { name: string; size?: number; label?: string } = $props();
+	let { name, size = 18, label = '', filled = false }: { name: string; size?: number; label?: string; filled?: boolean } = $props();
 
 	const paths: Record<string, string> = {
 		home: 'M3 11.5 12 4l9 7.5M5.5 9.5V20h13V9.5',
@@ -25,6 +25,9 @@
 		lock: 'M6.5 11V8a5.5 5.5 0 0 1 11 0v3M5 11h14v9.5H5Z',
 		grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
 		list: 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01',
+		star: 'M12 3.8l2.5 5.1 5.6.8-4 4 .9 5.6L12 16.6l-5 2.7.9-5.6-4-4 5.6-.8L12 3.8Z',
+		chart: 'M4 20h16M7 16v-5M12 16V6M17 16v-8',
+		share: 'M12 15V4m0 0L8 8m4-4 4 4M5 13v6.5h14V13',
 		trophy: 'M8 4h8v5a4 4 0 0 1-8 0V4Zm0 1.5H4.5V7A3 3 0 0 0 8 10m8-4.5h3.5V7A3 3 0 0 1 16 10m-4 3v4m-4 3.5h8M9 17h6'
 	};
 </script>
@@ -33,7 +36,7 @@
 	width={size}
 	height={size}
 	viewBox="0 0 24 24"
-	fill="none"
+	fill={filled ? 'currentColor' : 'none'}
 	stroke="currentColor"
 	stroke-width="1.8"
 	stroke-linecap="round"

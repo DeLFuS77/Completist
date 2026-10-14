@@ -88,6 +88,10 @@ type Entry struct {
 	Owned    bool     `json:"owned"`
 	Files    int      `json:"files"`
 	Versions int      `json:"versions"`
+	// on the wishlist: this game or another version of it
+	Wanted bool `json:"wanted"`
+	// the names of every version counted as this entry
+	Names []string `json:"-"`
 }
 
 // Progress is how complete a system is.
@@ -156,6 +160,10 @@ func Entries(ctx context.Context, s *store.Store, system string, mode string, re
 			} else {
 				e = entry(pick(group, regions), len(group))
 			}
+			e.Names = make([]string, len(group))
+			for i, g := range group {
+				e.Names[i] = g.Name
+			}
 			entries = append(entries, e)
 		}
 	}
@@ -166,7 +174,7 @@ func Entries(ctx context.Context, s *store.Store, system string, mode string, re
 }
 
 func entry(g store.GameRow, versions int) Entry {
-	e := Entry{ID: g.ID, Name: g.Name, Title: g.Title, Flags: dat.Flags(g.Flags).Names(), Owned: g.Have > 0, Files: g.Have, Versions: versions, Regions: []string{}}
+	e := Entry{ID: g.ID, Name: g.Name, Title: g.Title, Flags: dat.Flags(g.Flags).Names(), Owned: g.Have > 0, Files: g.Have, Versions: versions, Regions: []string{}, Names: []string{g.Name}}
 	if g.Regions != "" {
 		e.Regions = strings.Split(g.Regions, ",")
 	}
