@@ -6,6 +6,8 @@
 	import Counting from './settings/Counting.svelte';
 	import Users from './settings/Users.svelte';
 	import Account from './settings/Account.svelte';
+	import Notifications from './settings/Notifications.svelte';
+	import Backups from './settings/Backups.svelte';
 
 	let { tab }: { tab: string } = $props();
 	const isAdmin = $derived(session.status?.isAdmin ?? false);
@@ -15,6 +17,8 @@
 					{ id: 'libraries', name: t('Libraries') },
 					{ id: 'dats', name: t('DATs') },
 					{ id: 'counting', name: t('Counting') },
+					{ id: 'notifications', name: t('Notifications') },
+					{ id: 'backups', name: t('Backups') },
 					{ id: 'users', name: t('Users') },
 					{ id: 'account', name: t('Account') }
 				]
@@ -33,6 +37,8 @@
 	{#if current === 'libraries'}<Libraries />
 	{:else if current === 'dats'}<Dats />
 	{:else if current === 'counting'}<Counting />
+	{:else if current === 'notifications'}<Notifications />
+	{:else if current === 'backups'}<Backups />
 	{:else if current === 'users'}<Users />
 	{:else}<Account />{/if}
 </div>

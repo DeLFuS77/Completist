@@ -2,7 +2,10 @@ module github.com/DeLFuS77/completist
 
 go 1.26.0
 
-require github.com/ncruces/go-sqlite3 v0.35.6
+require (
+	github.com/fsnotify/fsnotify v1.10.1
+	github.com/ncruces/go-sqlite3 v0.35.6
+)
 
 require (
 	github.com/ncruces/go-sqlite3-wasm/v6 v6.3.35304 // indirect

@@ -26,6 +26,10 @@ Issues and pull requests are welcome. Discuss larger changes in an issue first.
 - `internal/scanner`: walks libraries, hashes new or changed files (zip too), in batches.
 - `internal/collection`: progress per system and the three modes.
 - `internal/datsync`: downloads DATs from libretro-database.
+- `internal/watcher`: scans again when the library folders change.
+- `internal/notify`: Discord, Telegram and webhook messages about the collection.
+- `internal/backup`: weekly and manual backups, restored while the app runs.
+- `internal/activity`: who changed what.
 - `internal/auth`: users, sessions, login limiter, CSRF and host checks.
 - `internal/server`: the JSON API and the embedded interface.
 - `ui/`: Svelte 5 + Tailwind 4, built by `ui/build.mjs` (esbuild) into `internal/webui/dist`.

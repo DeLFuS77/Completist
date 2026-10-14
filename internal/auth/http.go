@@ -87,6 +87,35 @@ func userError(w http.ResponseWriter, err error) {
 	writeError(w, http.StatusInternalServerError, err.Error())
 }
 
+// record tells the activity log about an action, with the name of who did it.
+func (a *Auth) record(r *http.Request, action, detail string) {
+	if a.OnAction == nil {
+		return
+	}
+	name := ""
+	if p := principalFrom(r); p != nil {
+		name = p.Name
+	}
+	a.OnAction(name, action, detail)
+}
+
+// UsersFile is the file of the accounts in the data folder, for backups.
+const UsersFile = USERS_FILENAME
+
+// ReloadUsers reads the accounts again, after a backup was restored.
+func (a *Auth) ReloadUsers() error {
+	if err := a.users.reload(); err != nil {
+		return err
+	}
+	a.forget()
+	return nil
+}
+
+// HasEnvAdmin reports whether an administrator is set in the environment.
+func (a *Auth) HasEnvAdmin() bool {
+	return a.envUser != ""
+}
+
 // Routes adds the login, account and user management endpoints.
 func (a *Auth) Routes(mux *http.ServeMux, log *slog.Logger) {
 	mux.HandleFunc("GET /api/auth/status", func(w http.ResponseWriter, r *http.Request) {
@@ -169,6 +198,14 @@ func (a *Auth) Routes(mux *http.ServeMux, log *slog.Logger) {
 		}
 		log.Info("user created", "user", body.Name, "role", body.Role)
 		if first {
+			// whoever creates the first account is not logged in yet
+			if a.OnAction != nil {
+				a.OnAction(body.Name, "Created a user", body.Name+": "+body.Role)
+			}
+		} else {
+			a.record(r, "Created a user", body.Name+": "+body.Role)
+		}
+		if first {
 			// whoever created the first account is logged in with it
 			http.SetCookie(w, a.sessionCookie(r, body.Name))
 		}
@@ -190,12 +227,14 @@ func (a *Auth) Routes(mux *http.ServeMux, log *slog.Logger) {
 				userError(w, err)
 				return
 			}
+			a.record(r, "Changed the role of a user", name+": "+body.Role)
 		}
 		if body.Password != "" {
 			if err := a.users.SetPassword(name, body.Password); err != nil {
 				userError(w, err)
 				return
 			}
+			a.record(r, "Changed the password of a user", name)
 		}
 		a.forget()
 		// changing your own password ends your session too: start a new one
@@ -217,6 +256,7 @@ func (a *Auth) Routes(mux *http.ServeMux, log *slog.Logger) {
 		}
 		a.forget()
 		log.Info("user deleted", "user", name)
+		a.record(r, "Deleted a user", name)
 		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 	})
 

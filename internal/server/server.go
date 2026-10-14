@@ -16,10 +16,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/DeLFuS77/completist/internal/activity"
 	"github.com/DeLFuS77/completist/internal/auth"
+	"github.com/DeLFuS77/completist/internal/backup"
 	"github.com/DeLFuS77/completist/internal/collection"
 	"github.com/DeLFuS77/completist/internal/dat"
 	"github.com/DeLFuS77/completist/internal/datsync"
+	"github.com/DeLFuS77/completist/internal/notify"
 	"github.com/DeLFuS77/completist/internal/scanner"
 	"github.com/DeLFuS77/completist/internal/store"
 	"github.com/DeLFuS77/completist/internal/systems"
@@ -31,9 +34,13 @@ var Version = "dev"
 
 // Server holds what the handlers need.
 type Server struct {
-	Store    *store.Store
-	Tasks    *tasks.Log
-	Scanner  *scanner.Scanner
+	Store   *store.Store
+	Tasks   *tasks.Log
+	Scanner *scanner.Scanner
+	// optional: who changed what, the backups and the notifications
+	Activity *activity.Log
+	Backups  *backup.Manager
+	Notifier *notify.Notifier
 	Progress *collection.Cache
 	Auth     *auth.Auth
 	Log      *slog.Logger
@@ -51,6 +58,7 @@ func (s *Server) Handler() http.Handler {
 	})
 	s.Auth.Routes(mux, s.Log)
 	s.routes(mux)
+	s.adminRoutes(mux)
 	mux.Handle("/", s.ui())
 
 	var h http.Handler = mux
@@ -92,6 +100,40 @@ func decode(r *http.Request, value any) error {
 
 func (s *Server) changed() {
 	s.Progress.Invalidate()
+}
+
+// record adds an action to the activity log, with the name of who did it.
+func (s *Server) record(r *http.Request, action, detail string) {
+	if s.Activity == nil {
+		return
+	}
+	name := ""
+	if p := auth.PrincipalFrom(r); p != nil {
+		name = p.Name
+	}
+	s.Activity.Add(name, action, detail)
+}
+
+// systemNames are the short names of systems, for the activity log.
+func systemNames(ids []string) string {
+	names := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if sys, ok := systems.ByID(id); ok {
+			names = append(names, sys.Short)
+		} else {
+			names = append(names, id)
+		}
+	}
+	return strings.Join(names, ", ")
+}
+
+// datsUpdated tells the notifier that the DATs changed: files that match a new DAT are not
+// new in the collection.
+func (s *Server) datsUpdated(changes []store.DatChange) {
+	s.changed()
+	if s.Notifier != nil {
+		s.Notifier.AfterDatUpdate(context.Background(), changes)
+	}
 }
 
 func (s *Server) routes(mux *http.ServeMux) {
@@ -375,6 +417,7 @@ func (s *Server) routes(mux *http.ServeMux) {
 			return
 		}
 		s.Log.Info("library added", "path", lib.Path)
+		s.record(r, activity.LibraryAdded, lib.Path)
 		s.Scanner.Start(tasks.TriggerSettings)
 		writeJSON(w, http.StatusCreated, lib)
 	})
@@ -393,15 +436,25 @@ func (s *Server) routes(mux *http.ServeMux) {
 			s.fail(w, err)
 			return
 		}
+		s.record(r, activity.LibraryChanged, body.Name)
 		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 	})
 
 	mux.HandleFunc("DELETE /api/libraries/{id}", func(w http.ResponseWriter, r *http.Request) {
 		id, _ := strconv.ParseInt(r.PathValue("id"), 10, 64)
+		removed := ""
+		if libs, err := s.Store.Libraries(); err == nil {
+			for _, l := range libs {
+				if l.ID == id {
+					removed = l.Path
+				}
+			}
+		}
 		if err := s.Store.RemoveLibrary(id); err != nil {
 			s.fail(w, err)
 			return
 		}
+		s.record(r, activity.LibraryRemoved, removed)
 		// the files of the library are forgotten, never deleted from the disk
 		s.Store.Rematch(r.Context())
 		s.changed()
@@ -466,10 +519,11 @@ func (s *Server) routes(mux *http.ServeMux) {
 			writeError(w, http.StatusBadRequest, "Choose the systems whose DATs you want.")
 			return
 		}
-		if err := datsync.Start(context.Background(), s.Store, s.Tasks, tasks.TriggerManual, ids, s.changed); err != nil {
+		if err := datsync.Start(context.Background(), s.Store, s.Tasks, tasks.TriggerManual, ids, s.changed, s.datsUpdated); err != nil {
 			writeError(w, http.StatusConflict, "The DATs are already being downloaded.")
 			return
 		}
+		s.record(r, activity.DatsDownloaded, systemNames(ids))
 		writeJSON(w, http.StatusAccepted, map[string]any{"systems": ids})
 	})
 
@@ -507,6 +561,8 @@ func (s *Server) routes(mux *http.ServeMux) {
 		}
 		s.changed()
 		s.Log.Info("DAT imported", "system", sys.ID, "games", change.Games)
+		s.record(r, activity.DatImported, sys.Short+": "+filepath.Base(name))
+		s.datsUpdated(nil)
 		writeJSON(w, http.StatusOK, change)
 	})
 
@@ -515,6 +571,8 @@ func (s *Server) routes(mux *http.ServeMux) {
 			s.fail(w, err)
 			return
 		}
+		s.record(r, activity.DatRemoved, systemNames([]string{r.PathValue("system")}))
+		s.datsUpdated(nil)
 		s.changed()
 		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 	})
@@ -543,6 +601,7 @@ func (s *Server) routes(mux *http.ServeMux) {
 			s.fail(w, err)
 			return
 		}
+		s.record(r, activity.CountingChanged, p.DefaultMode)
 		s.changed()
 		writeJSON(w, http.StatusOK, p)
 	})

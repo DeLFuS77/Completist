@@ -67,14 +67,18 @@ var running sync.Mutex
 // ErrBusy tells that DATs are being downloaded already.
 var ErrBusy = errors.New("the DATs are already being downloaded")
 
-// Start runs Sync in the background, unless a download is running already.
-func Start(ctx context.Context, st *store.Store, log *tasks.Log, trigger string, ids []string, onChange func()) error {
+// Start runs Sync in the background, unless a download is running already. onDone gets what
+// changed, when set.
+func Start(ctx context.Context, st *store.Store, log *tasks.Log, trigger string, ids []string, onChange func(), onDone func([]store.DatChange)) error {
 	if !running.TryLock() {
 		return ErrBusy
 	}
 	go func() {
 		defer running.Unlock()
-		syncSystems(ctx, st, log, trigger, ids, onChange)
+		changes := syncSystems(ctx, st, log, trigger, ids, onChange)
+		if onDone != nil {
+			onDone(changes)
+		}
 	}()
 	return nil
 }

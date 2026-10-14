@@ -10,13 +10,14 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	_ "github.com/ncruces/go-sqlite3/driver"
+	sqlite3driver "github.com/ncruces/go-sqlite3/driver"
 )
 
 //go:embed migrations/*.sql
@@ -241,4 +242,55 @@ func (s *Store) tx(ctx context.Context, work func(tx *sql.Tx) error) error {
 		return err
 	}
 	return tx.Commit()
+}
+
+// Snapshot writes a consistent copy of the database to a new file, while it is in use.
+func (s *Store) Snapshot(ctx context.Context, path string) error {
+	os.Remove(path)
+	_, err := s.db.ExecContext(ctx, `VACUUM INTO ?`, path)
+	return err
+}
+
+// Restore replaces the content of the database with a copy made by Snapshot, while the app
+// runs, and brings its tables up to date.
+func (s *Store) Restore(ctx context.Context, path string) error {
+	conn, err := s.db.Conn(ctx)
+	if err != nil {
+		return err
+	}
+	err = conn.Raw(func(c any) error {
+		raw, ok := c.(sqlite3driver.Conn)
+		if !ok {
+			return errors.New("the database driver cannot restore")
+		}
+		return raw.Raw().Restore("main", "file:"+filepath.ToSlash(path)+"?mode=ro")
+	})
+	conn.Close()
+	if err != nil {
+		return err
+	}
+	return s.migrate()
+}
+
+// Check reports whether a file is a database of Completist that is not newer than this
+// version, before it is restored.
+func Check(ctx context.Context, path string) error {
+	db, err := sql.Open("sqlite3", "file:"+filepath.ToSlash(path)+"?mode=ro")
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	var ok string
+	if err := db.QueryRowContext(ctx, `PRAGMA quick_check`).Scan(&ok); err != nil || ok != "ok" {
+		return errors.New("damaged database")
+	}
+	var version int
+	if err := db.QueryRowContext(ctx, `SELECT COALESCE(MAX(version), 0) FROM schema_version`).Scan(&version); err != nil {
+		return errors.New("not a database of Completist")
+	}
+	entries, _ := fs.ReadDir(migrations, "migrations")
+	if version > len(entries) {
+		return errors.New("made by a newer version")
+	}
+	return nil
 }

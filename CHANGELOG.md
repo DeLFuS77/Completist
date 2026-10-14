@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.0 (unreleased)
+
+The rest of phase 0.
+
+- Libraries are scanned again when their files change; network shares are checked every two
+  minutes.
+- Notifications through Discord, Telegram or a webhook: games new in the collection, complete
+  sets, damaged files and new entries in the DATs.
+- Backups of the database, users and activity log: one every week, the last five kept, and
+  downloaded or restored from the settings while the app runs.
+- An activity log of who changed what, in the settings of the users.
+
 ## 0.1.0 (unreleased)
 
 The first version: phase 0 of the plan.

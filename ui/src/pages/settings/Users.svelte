@@ -20,6 +20,26 @@
 		load();
 	});
 
+	type Entry = { time: string; user?: string; action: string; detail?: string };
+	let activity = $state<Entry[]>([]);
+	const loadActivity = () => get<Entry[]>('/api/activity').then((a) => (activity = a)).catch(() => {});
+	$effect(() => {
+		loadActivity();
+	});
+	// values recorded in English, shown in the language of the interface
+	const values: Record<string, string> = {
+		admin: 'Administrator',
+		viewer: 'Read only',
+		'1g1r': 'One version of each game',
+		official: 'Every official release',
+		full: 'Every entry of the DAT'
+	};
+	function detail(text = '') {
+		if (values[text]) return t(values[text]);
+		const [who, value] = text.split(': ');
+		return value && values[value] ? `${who}: ${t(values[value])}` : text;
+	}
+
 	let name = $state('');
 	let password = $state('');
 	let role = $state<'admin' | 'viewer'>('viewer');
@@ -31,6 +51,7 @@
 			name = password = '';
 			await loadSession();
 			load();
+			loadActivity();
 		} catch (e: any) {
 			error = t(e.message);
 		}
@@ -117,3 +138,21 @@
 	{#if error}<p class="text-sm text-bad">{error}</p>{/if}
 	<button class="btn btn-primary" type="submit">{enabled ? t('Add the user') : t('Create and log in')}</button>
 </form>
+
+<section class="mt-12" aria-labelledby="activity">
+	<h3 id="activity" class="t-section">{t('Activity')}</h3>
+	<p class="mt-1 text-sm text-mute">{t('Who changed what, newest first.')}</p>
+	{#if activity.length === 0}
+		<p class="mt-3 text-mute">{t('Nothing has been changed yet.')}</p>
+	{:else}
+		<ul class="mt-4 max-w-3xl divide-y divide-line/60 text-sm">
+			{#each activity.slice(0, 100) as e, i (i)}
+				<li class="flex flex-wrap gap-x-4 gap-y-1 py-2.5">
+					<span class="w-40 shrink-0 text-mute">{date(e.time)}</span>
+					<span class="w-40 shrink-0 truncate font-semibold">{e.user || t('No login')}</span>
+					<span class="min-w-0 flex-1">{t(e.action)}{#if e.detail}<span class="ml-1.5 break-all text-mute">{detail(e.detail)}</span>{/if}</span>
+				</li>
+			{/each}
+		</ul>
+	{/if}
+</section>

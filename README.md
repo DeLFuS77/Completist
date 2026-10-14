@@ -29,8 +29,13 @@ Unraid server or your computer, as one small program with its database inside.
   imported from your own DAT files (Logiqx XML or clrmamepro).
 - **Looks good**: box art, screenshots, a page for each game with its versions and regions, a
   dark interface that works on a phone, in English and Spanish.
-- **Stays up to date**: libraries are scanned again regularly; unchanged files are not read
-  twice, so 10,000 files are checked in seconds.
+- **Stays up to date**: Completist notices when files are added, removed or replaced and scans
+  again; network shares are checked every two minutes. Unchanged files are not read twice, so
+  10,000 files are checked in under a second.
+- **Tells you the news** through Discord, Telegram or any webhook: games new in your collection,
+  sets you complete, damaged files found and new entries in the DATs.
+- **Keeps a backup** of the libraries, DATs, settings and users every week, and keeps the last five;
+  a backup can also be downloaded and restored from the settings.
 - **Built for a server**: user accounts (administrator or read only), protection against password
   guessing, live tasks, a JSON API, read-only libraries and a Docker image for amd64 and arm64.
 
@@ -125,7 +130,11 @@ be reached from the internet.
 | `COMPLETIST_DATA_DIR` | `data` next to the program, `/data` in Docker | The database and settings |
 | `COMPLETIST_PORT` | `3000` | Port of the web interface |
 | `COMPLETIST_LIBRARIES` | | Folders added as libraries on the first start, separated by commas |
-| `COMPLETIST_SCAN_INTERVAL_MINUTES` | `30` | How often the libraries are scanned again; `0` turns it off |
+| `COMPLETIST_WATCH` | `true` | Scan when files change; `false` turns it off |
+| `COMPLETIST_WATCH_INTERVAL_MINUTES` | `2` | How often the folders are checked for changes, for network shares that do not report them |
+| `COMPLETIST_SCAN_INTERVAL_MINUTES` | `360` | A full scan as a safety net; `0` turns it off |
+| `COMPLETIST_AUTO_BACKUP` | `true` | A copy of the state every week; `false` turns it off |
+| `COMPLETIST_ALLOWED_HOSTS` | | More host names the app answers to while no user exists |
 | `COMPLETIST_DAT_UPDATE_HOURS` | `168` | How often the downloaded DATs are updated; `0` turns it off |
 | `COMPLETIST_SCAN_WORKERS` | up to 4 | Files read at the same time |
 | `COMPLETIST_DAT_URL` | libretro-database on GitHub | Where the DATs are downloaded from, for a mirror |

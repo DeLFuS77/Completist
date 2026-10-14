@@ -17,13 +17,17 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/DeLFuS77/completist/internal/activity"
 	"github.com/DeLFuS77/completist/internal/auth"
+	"github.com/DeLFuS77/completist/internal/backup"
 	"github.com/DeLFuS77/completist/internal/collection"
 	"github.com/DeLFuS77/completist/internal/datsync"
+	"github.com/DeLFuS77/completist/internal/notify"
 	"github.com/DeLFuS77/completist/internal/scanner"
 	"github.com/DeLFuS77/completist/internal/server"
 	"github.com/DeLFuS77/completist/internal/store"
 	"github.com/DeLFuS77/completist/internal/tasks"
+	"github.com/DeLFuS77/completist/internal/watcher"
 	"github.com/DeLFuS77/completist/internal/webui"
 )
 
@@ -87,13 +91,26 @@ func run(log *slog.Logger, dataDir string, address string) error {
 	}
 
 	taskLog := tasks.Load(dataDir)
+	activityLog := activity.Load(dataDir)
+	authn.OnAction = activityLog.Add
 	progress := collection.NewCache(st)
+	notifier := &notify.Notifier{Store: st, Progress: progress, DataFolder: dataDir, Log: log}
 	sc := scanner.New(st, taskLog, envInt("COMPLETIST_SCAN_WORKERS", 0))
-	sc.OnChange = progress.Invalidate
+	sc.OnChange = func() {
+		progress.Invalidate()
+		notifier.AfterScan(context.Background())
+	}
+	backups := &backup.Manager{DataFolder: dataDir, Store: st, Auth: authn, Activity: activityLog}
+	backups.OnRestore = func() {
+		progress.Invalidate()
+		notifier.Record(context.Background())
+		sc.Start(tasks.TriggerSettings)
+	}
 
 	addLibrariesFromEnv(log, st)
 
 	srv := &server.Server{Store: st, Tasks: taskLog, Scanner: sc, Progress: progress, Auth: authn, Log: log,
+		Activity: activityLog, Backups: backups, Notifier: notifier,
 		UI: webui.FS(), UIScriptHashes: webui.ScriptHashes()}
 	// while developing the interface, serve it from its build folder instead of the binary
 	if dir := os.Getenv("COMPLETIST_UI_DIR"); dir != "" {
@@ -106,7 +123,19 @@ func run(log *slog.Logger, dataDir string, address string) error {
 	defer stop()
 	// a scan running when the app stops ends before the database closes
 	sc.Context = ctx
-	go schedule(ctx, log, st, taskLog, sc, progress)
+	if env("COMPLETIST_WATCH", "true") != "false" {
+		watcher.Start(ctx, watcher.Config{
+			DataFolder: dataDir,
+			Folders:    func() []string { return libraryPaths(st) },
+			Scan: func() bool {
+				err := sc.Start(tasks.TriggerWatcher)
+				return err == nil || errors.Is(err, scanner.ErrBusy)
+			},
+			PollInterval: time.Duration(envInt("COMPLETIST_WATCH_INTERVAL_MINUTES", 2)) * time.Minute,
+			Log:          log,
+		})
+	}
+	go schedule(ctx, log, st, taskLog, sc, progress, notifier, backups)
 
 	errs := make(chan error, 1)
 	go func() {
@@ -125,6 +154,19 @@ func run(log *slog.Logger, dataDir string, address string) error {
 		httpServer.Shutdown(shutdown)
 	}
 	return nil
+}
+
+// libraryPaths are the folders of the libraries, for the watcher.
+func libraryPaths(st *store.Store) []string {
+	libs, err := st.Libraries()
+	if err != nil {
+		return nil
+	}
+	out := make([]string, 0, len(libs))
+	for _, l := range libs {
+		out = append(out, l.Path)
+	}
+	return out
 }
 
 // addLibrariesFromEnv adds the folders of COMPLETIST_LIBRARIES (separated by commas) the first
@@ -153,10 +195,11 @@ func addLibrariesFromEnv(log *slog.Logger, st *store.Store) {
 	}
 }
 
-// schedule scans at start and then regularly, and updates the DATs now and then. Unchanged
+// schedule scans at start, updates the DATs now and then and saves a copy of the state every
+// week. The watcher scans when files change; the scheduled scan is a safety net. Unchanged
 // files are not read again, so a scan of a library already known is quick.
-func schedule(ctx context.Context, log *slog.Logger, st *store.Store, taskLog *tasks.Log, sc *scanner.Scanner, progress *collection.Cache) {
-	scanEvery := time.Duration(envInt("COMPLETIST_SCAN_INTERVAL_MINUTES", 30)) * time.Minute
+func schedule(ctx context.Context, log *slog.Logger, st *store.Store, taskLog *tasks.Log, sc *scanner.Scanner, progress *collection.Cache, notifier *notify.Notifier, backups *backup.Manager) {
+	scanEvery := time.Duration(envInt("COMPLETIST_SCAN_INTERVAL_MINUTES", 360)) * time.Minute
 	datEvery := time.Duration(envInt("COMPLETIST_DAT_UPDATE_HOURS", 24*7)) * time.Hour
 
 	sc.Start(tasks.TriggerStartup)
@@ -187,7 +230,17 @@ func schedule(ctx context.Context, log *slog.Logger, st *store.Store, taskLog *t
 					}
 				}
 				if len(ids) > 0 {
-					datsync.Start(ctx, st, taskLog, tasks.TriggerSchedule, ids, progress.Invalidate)
+					datsync.Start(ctx, st, taskLog, tasks.TriggerSchedule, ids, progress.Invalidate, func(changes []store.DatChange) {
+						progress.Invalidate()
+						notifier.AfterDatUpdate(ctx, changes)
+					})
+				}
+			}
+			if env("COMPLETIST_AUTO_BACKUP", "true") != "false" && backups.Due(now) {
+				if info, err := backups.Make(ctx, now); err != nil {
+					log.Warn("the weekly backup could not be made", "error", err)
+				} else {
+					log.Info("weekly backup saved", "name", info.Name)
 				}
 			}
 		}

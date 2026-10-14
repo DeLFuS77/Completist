@@ -30,8 +30,13 @@ NAS, tu servidor Unraid o tu ordenador, como un solo programa pequeño con su ba
   importa tus propios DAT (Logiqx XML o clrmamepro).
 - **Se ve bien**: portadas, capturas, una página por juego con sus versiones y regiones, una
   interfaz oscura que funciona en el móvil, en español e inglés.
-- **Se actualiza solo**: vuelve a escanear las bibliotecas cada cierto tiempo; los archivos que no
-  cambian no se leen dos veces, así que 10.000 archivos se comprueban en segundos.
+- **Se actualiza solo**: detecta cuando se añaden, quitan o cambian archivos y vuelve a escanear;
+  las carpetas de red se revisan cada dos minutos. Los archivos que no cambian no se leen dos
+  veces, así que 10.000 archivos se comprueban en menos de un segundo.
+- **Te avisa** por Discord, Telegram o cualquier webhook: juegos nuevos en tu colección, sets que
+  completas, archivos dañados y entradas nuevas en los DAT.
+- **Guarda una copia** de las bibliotecas, los DAT, los ajustes y los usuarios cada semana, y
+  conserva las cinco últimas; también se puede descargar y restaurar desde los ajustes.
 - **Pensado para un servidor**: cuentas de usuario (administrador o solo lectura), protección
   contra quien intenta adivinar contraseñas, tareas en vivo, API JSON, bibliotecas de solo lectura e
   imagen Docker para amd64 y arm64.
@@ -125,7 +130,11 @@ fallidos se frenan y después se bloquean.
 | `COMPLETIST_DATA_DIR` | `data` junto al programa, `/data` en Docker | La base de datos y los ajustes |
 | `COMPLETIST_PORT` | `3000` | Puerto de la interfaz web |
 | `COMPLETIST_LIBRARIES` | | Carpetas que se añaden como bibliotecas en el primer arranque, separadas por comas |
-| `COMPLETIST_SCAN_INTERVAL_MINUTES` | `30` | Cada cuánto se vuelven a escanear las bibliotecas; `0` lo desactiva |
+| `COMPLETIST_WATCH` | `true` | Escanear cuando cambian los archivos; `false` lo desactiva |
+| `COMPLETIST_WATCH_INTERVAL_MINUTES` | `2` | Cada cuánto se revisan las carpetas, para las de red que no avisan de los cambios |
+| `COMPLETIST_SCAN_INTERVAL_MINUTES` | `360` | Un escaneo completo por si acaso; `0` lo desactiva |
+| `COMPLETIST_AUTO_BACKUP` | `true` | Una copia del estado cada semana; `false` lo desactiva |
+| `COMPLETIST_ALLOWED_HOSTS` | | Más nombres de host a los que responde mientras no hay usuarios |
 | `COMPLETIST_DAT_UPDATE_HOURS` | `168` | Cada cuánto se actualizan los DAT descargados; `0` lo desactiva |
 | `COMPLETIST_SCAN_WORKERS` | hasta 4 | Archivos que se leen a la vez |
 | `COMPLETIST_DAT_URL` | libretro-database en GitHub | De dónde se descargan los DAT, para usar un espejo |
