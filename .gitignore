@@ -1,0 +1,9 @@
+/build/
+/data/
+ui/node_modules/
+internal/webui/dist/*
+!internal/webui/dist/.gitkeep
+*.db
+*.db-shm
+*.db-wal
+.DS_Store

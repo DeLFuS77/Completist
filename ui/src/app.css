@@ -1,0 +1,192 @@
+@import 'tailwindcss';
+
+/* Completist: a midnight collection room. Covers carry the colour; the chrome stays quiet,
+   and trophy gold marks what is complete. Each system brings its own hue (lib/systems.ts). */
+
+@font-face {
+	font-family: 'Unbounded';
+	src: url('/fonts/unbounded.woff') format('woff');
+	font-weight: 200 900;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Figtree';
+	src: url('/fonts/figtree.woff') format('woff');
+	font-weight: 300 900;
+	font-display: swap;
+}
+
+@theme {
+	--font-display: 'Unbounded', ui-sans-serif, system-ui, sans-serif;
+	--font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+
+	--color-night: #0f1426;
+	--color-deep: #0b0f1e;
+	--color-panel: #182039;
+	--color-raised: #212a48;
+	--color-line: #2b355a;
+	--color-ink: #e7ebf6;
+	--color-mute: #8c96b5;
+	--color-faint: #5b6588;
+	--color-gold: #f3b440;
+	--color-gold-deep: #c98a12;
+	--color-good: #4fd18b;
+	--color-warn: #f59e5b;
+	--color-bad: #ef5d6c;
+
+	--radius-cover: 6px;
+	--ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+	html {
+		color-scheme: dark;
+		background: var(--color-night);
+		color: var(--color-ink);
+		font-family: var(--font-sans);
+		-webkit-font-smoothing: antialiased;
+		text-rendering: optimizeLegibility;
+	}
+	body {
+		min-height: 100dvh;
+	}
+	::selection {
+		background: color-mix(in oklab, var(--color-gold) 40%, transparent);
+	}
+	:focus-visible {
+		outline: 2px solid var(--color-gold);
+		outline-offset: 2px;
+		border-radius: 4px;
+	}
+	button,
+	[role='button'] {
+		cursor: pointer;
+	}
+	button:disabled {
+		cursor: not-allowed;
+	}
+	input,
+	select,
+	textarea {
+		font: inherit;
+	}
+}
+
+@layer components {
+	/* the type scale: display for names and numbers, sans for everything else */
+	.t-hero {
+		font-family: var(--font-display);
+		font-weight: 700;
+		font-size: clamp(2.6rem, 6vw, 4.75rem);
+		line-height: 0.95;
+		letter-spacing: -0.035em;
+	}
+	.t-title {
+		font-family: var(--font-display);
+		font-weight: 600;
+		font-size: clamp(1.6rem, 3.2vw, 2.4rem);
+		line-height: 1.05;
+		letter-spacing: -0.025em;
+	}
+	.t-section {
+		font-family: var(--font-display);
+		font-weight: 600;
+		font-size: 1.05rem;
+		letter-spacing: -0.01em;
+	}
+	.t-num {
+		font-family: var(--font-display);
+		font-variant-numeric: tabular-nums;
+		letter-spacing: -0.02em;
+	}
+
+	.btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		border-radius: 999px;
+		padding: 0.55rem 1.1rem;
+		font-weight: 600;
+		font-size: 0.925rem;
+		transition: background-color 120ms, color 120ms, border-color 120ms;
+		white-space: nowrap;
+	}
+	.btn-primary {
+		background: var(--color-gold);
+		color: #1d1405;
+	}
+	.btn-primary:hover:not(:disabled) {
+		background: #ffc75e;
+	}
+	.btn-quiet {
+		background: var(--color-raised);
+		color: var(--color-ink);
+	}
+	.btn-quiet:hover:not(:disabled) {
+		background: var(--color-line);
+	}
+	.btn-danger {
+		background: transparent;
+		color: var(--color-bad);
+		border: 1px solid color-mix(in oklab, var(--color-bad) 45%, transparent);
+	}
+	.btn-danger:hover:not(:disabled) {
+		background: color-mix(in oklab, var(--color-bad) 14%, transparent);
+	}
+	.btn:disabled {
+		opacity: 0.5;
+	}
+
+	.field {
+		width: 100%;
+		background: var(--color-deep);
+		border: 1px solid var(--color-line);
+		border-radius: 10px;
+		padding: 0.6rem 0.8rem;
+		color: var(--color-ink);
+	}
+	.field:focus {
+		border-color: var(--color-gold);
+		outline: none;
+	}
+	.field::placeholder {
+		color: var(--color-faint);
+	}
+
+	.chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		border-radius: 999px;
+		padding: 0.4rem 0.9rem;
+		font-size: 0.875rem;
+		font-weight: 600;
+		border: 1px solid var(--color-line);
+		color: var(--color-mute);
+		white-space: nowrap;
+		transition: color 120ms, border-color 120ms, background-color 120ms;
+	}
+	.chip:hover {
+		color: var(--color-ink);
+	}
+	.chip[aria-pressed='true'],
+	.chip[aria-current='page'] {
+		background: var(--color-ink);
+		border-color: var(--color-ink);
+		color: var(--color-night);
+	}
+
+	.panel {
+		background: var(--color-panel);
+		border-radius: 16px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		transition-duration: 0.01ms !important;
+	}
+}

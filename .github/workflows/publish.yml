@@ -1,0 +1,121 @@
+# Adapted from Switch Library Manager Web by the same author.
+# Publishes the Docker image for every version tag to the GitHub Container Registry and,
+# when the DOCKERHUB_TOKEN secret is set, to Docker Hub as DOCKERHUB_USERNAME.
+# A version can be published again by hand (Actions > Publish > Run workflow).
+name: Publish
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Existing version tag to publish, e.g. 1.3.0
+        required: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  DOCKERHUB_REPOSITORY: completist
+  # public Docker Hub account; the access token is the DOCKERHUB_TOKEN secret
+  DOCKERHUB_USERNAME: delfus77
+  VERSION: ${{ inputs.version || github.ref_name }}
+
+jobs:
+
+  publish:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    env:
+      DOCKERHUB_ENABLED: ${{ secrets.DOCKERHUB_TOKEN != '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ env.VERSION }}
+
+      # the Dockerfile cross-compiles Go; QEMU only runs the few steps of the final image
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # pasted secrets often end with a line break, which Docker Hub rejects
+      - name: Prepare Docker Hub credentials
+        if: env.DOCKERHUB_ENABLED == 'true'
+        env:
+          RAW_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          token=$(printf '%s' "$RAW_TOKEN" | tr -d '[:space:]')
+          echo "::add-mask::$token"
+          # check the format without printing the value
+          echo "token: ${#token} characters"
+          if ! printf '%s' "$token" | LC_ALL=C grep -Eq '^[A-Za-z0-9_-]{20,}$'; then
+            echo "::error::DOCKERHUB_TOKEN does not look like a Docker Hub access token (dckr_pat_...): it contains unexpected characters or is too short"
+            exit 1
+          fi
+          if ! printf '%s' "$token" | grep -q '^dckr_pat_'; then
+            echo "::warning::DOCKERHUB_TOKEN does not start with dckr_pat_: use a personal access token, not your password"
+          fi
+          echo "DOCKERHUB_TOKEN=$token" >> "$GITHUB_ENV"
+
+      - name: Log in to Docker Hub
+        if: env.DOCKERHUB_ENABLED == 'true'
+        uses: docker/login-action@v4
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
+      - name: Image names
+        id: images
+        run: |
+          {
+            echo "names<<EOF"
+            echo "${REGISTRY}/${IMAGE_NAME}"
+            if [ "$DOCKERHUB_ENABLED" = "true" ]; then
+              echo "docker.io/${DOCKERHUB_USERNAME}/${DOCKERHUB_REPOSITORY}"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ steps.images.outputs.names }}
+          tags: |
+            type=raw,value=${{ env.VERSION }}
+          flavor: |
+            latest=true
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ env.VERSION }}
+
+      - name: Update Docker Hub description
+        if: env.DOCKERHUB_ENABLED == 'true'
+        uses: peter-evans/dockerhub-description@v5
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+          repository: ${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPOSITORY }}
+          short-description: The ROM library manager that tells you what's missing
+          readme-filepath: ./README.md

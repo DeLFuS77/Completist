@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>completist</Name>
+  <Repository>delfus77/completist:latest</Repository>
+  <Registry>https://hub.docker.com/r/delfus77/completist</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/DeLFuS77/completist/issues</Support>
+  <Project>https://github.com/DeLFuS77/completist</Project>
+  <Overview>The ROM library manager that tells you what's missing. Completist compares your ROMs with the No-Intro DATs and shows, system by system, what you have, what is missing and which files are damaged, duplicated or unknown. Count complete sets your way: one version of each game, every official release or the whole DAT. Box art, live tasks, user accounts. Use it with backups of games you own; no games are included or downloaded.</Overview>
+  <Category>Tools:Utilities MediaApp:Other</Category>
+  <WebUI>http://[IP]:[PORT:3000]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/DeLFuS77/completist/main/templates/completist.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/DeLFuS77/completist/main/ui/static/favicon.svg</Icon>
+  <ExtraSearchTerms>rom roms retro no-intro dat collection nes snes gba mega drive romm</ExtraSearchTerms>
+  <License>AGPL-3.0</License>
+  <MinVer>6.9.0</MinVer>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <Config Name="WebUI port" Target="3000" Default="3000" Mode="tcp" Description="Port of the web interface." Type="Port" Display="always" Required="true" Mask="false">3000</Config>
+  <Config Name="Appdata" Target="/data" Default="/mnt/user/appdata/completist" Mode="rw" Description="The database and the settings." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/completist</Config>
+  <Config Name="ROMs" Target="/roms" Default="" Mode="rw" Description="Share with your ROMs, e.g. /mnt/user/roms. Subfolders named after a system (snes, megadrive...) help. Use ro to keep it read only." Type="Path" Display="always" Required="true" Mask="false"></Config>
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="User that runs the app; 99 is nobody, the owner of Unraid shares." Type="Variable" Display="advanced" Required="true" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Group that runs the app; 100 is users." Type="Variable" Display="advanced" Required="true" Mask="false">100</Config>
+  <Config Name="Time zone" Target="TZ" Default="Europe/Madrid" Mode="" Description="Time zone for dates and scheduled scans." Type="Variable" Display="advanced" Required="false" Mask="false">Europe/Madrid</Config>
+  <Config Name="Admin user" Target="COMPLETIST_AUTH_USERNAME" Default="" Mode="" Description="Optional: an administrator, with the password below. Users can also be created in the app." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+  <Config Name="Admin password" Target="COMPLETIST_AUTH_PASSWORD" Default="" Mode="" Description="Optional: password of the administrator above." Type="Variable" Display="advanced" Required="false" Mask="true"></Config>
+  <Config Name="Allow remote access without login" Target="COMPLETIST_ALLOW_REMOTE_WITHOUT_LOGIN" Default="" Mode="" Description="Optional: true only if another service (a proxy with its own login, a VPN) protects the app. Without users the app otherwise only answers on the local network." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+  <Config Name="Trusted proxies" Target="COMPLETIST_TRUSTED_PROXIES" Default="" Mode="" Description="Optional: cloudflare when Cloudflare connects to the app directly, or proxy addresses separated by commas, so the login protection sees the real visitor address." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+</Container>

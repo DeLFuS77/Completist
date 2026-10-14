@@ -1,0 +1,25 @@
+# docker compose up -d, then open http://localhost:3000
+services:
+  completist:
+    image: delfus77/completist:latest
+    # or build it from this folder:
+    # build: .
+    container_name: completist
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # the user and group that own your ROM folders (see `id` on the host)
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Madrid
+      # optional: an administrator; users can also be created in the app.
+      # Without users the app only answers on the local network.
+      # - COMPLETIST_AUTH_USERNAME=admin
+      # - COMPLETIST_AUTH_PASSWORD=choose-a-long-password
+    volumes:
+      # the database and settings
+      - ./data:/data
+      # your ROMs; subfolders named after a system (snes, megadrive...) help.
+      # Add :ro to keep it read only.
+      - /path/to/your/roms:/roms
