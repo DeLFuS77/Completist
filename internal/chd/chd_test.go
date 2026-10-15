@@ -346,3 +346,85 @@ func TestDVDAndGDFixtures(t *testing.T) {
 		t.Fatalf("gd: %v, want %v", got, gd)
 	}
 }
+
+// CHD files written here read back as their sources, and chdman agrees.
+func TestWrite(t *testing.T) {
+	dir := t.TempDir()
+	files := makeDisc(t, dir)
+	tracks, err := ParseCue(filepath.Join(dir, "disc.cue"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tracks) != 3 || tracks[1].Pregap != 150 || tracks[1].Frames != 180 {
+		t.Fatalf("cue: %+v", tracks)
+	}
+	out := filepath.Join(dir, "out.chd")
+	if err := WriteCD(out, tracks, nil); err != nil {
+		t.Fatal(err)
+	}
+	got := trackHashes(t, out)
+	for n, f := range files {
+		if got[n] != sha1File(t, filepath.Join(dir, f)) {
+			t.Errorf("track %d differs", n)
+		}
+	}
+	iso := filepath.Join(dir, "game.iso")
+	makeISO(t, iso)
+	dvd := filepath.Join(dir, "dvd.chd")
+	if err := WriteDVD(dvd, iso, nil); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Open(dvd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := sha1.New()
+	c.WriteTo(h)
+	isDVD := c.DVD()
+	c.Close()
+	if hex.EncodeToString(h.Sum(nil)) != sha1File(t, iso) || !isDVD {
+		t.Fatal("dvd differs")
+	}
+	sizeISO, _ := os.Stat(iso)
+	sizeCHD, _ := os.Stat(dvd)
+	t.Logf("dvd %d -> %d", sizeISO.Size(), sizeCHD.Size())
+
+	chdman := os.Getenv("CHDMAN")
+	if chdman == "" {
+		return
+	}
+	for _, f := range []string{out, dvd} {
+		if b, err := exec.Command(chdman, "verify", "-i", f).CombinedOutput(); err != nil {
+			t.Fatalf("chdman verify %s: %v\n%s", f, err, b)
+		}
+	}
+	ext := filepath.Join(dir, "ext")
+	os.Mkdir(ext, 0o755)
+	if b, err := exec.Command(chdman, "extractcd", "-i", out, "-o", filepath.Join(ext, "x.cue"), "-sb").CombinedOutput(); err != nil {
+		t.Fatalf("extractcd: %v\n%s", err, b)
+	}
+	for n, f := range files {
+		if sha1File(t, filepath.Join(ext, fmt.Sprintf("x (Track %d).bin", n))) != sha1File(t, filepath.Join(dir, f)) {
+			t.Errorf("chdman extracts track %d otherwise", n)
+		}
+	}
+	ref := filepath.Join(dir, "ref.chd")
+	exec.Command(chdman, "createcd", "-i", filepath.Join(dir, "disc.cue"), "-o", ref, "-c", "cdzl").Run()
+	a, _ := os.Stat(out)
+	b, _ := os.Stat(ref)
+	t.Logf("cd: ours %d, chdman cdzl %d", a.Size(), b.Size())
+}
+
+// One BIN file with two tracks, the second with its pregap.
+func TestCueOneFile(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "one.bin"), make([]byte, 2352*400), 0o644)
+	os.WriteFile(filepath.Join(dir, "one.cue"), []byte("FILE \"one.bin\" BINARY\n  TRACK 01 MODE1/2352\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 00 00:03:00\n    INDEX 01 00:05:00\n"), 0o644)
+	tracks, err := ParseCue(filepath.Join(dir, "one.cue"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tracks[0].Frames != 225 || tracks[1].Offset != 225*2352 || tracks[1].Frames != 175 || tracks[1].Pregap != 150 {
+		t.Fatalf("%+v", tracks)
+	}
+}

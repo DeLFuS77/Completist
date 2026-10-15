@@ -42,8 +42,9 @@ NAS, tu servidor Unraid o tu ordenador, como un solo programa pequeño con su ba
 - **Exporta** a listas de RetroArch y gamelists de ES-DE, con los nombres de los DAT, para que
   también ahí salgan las portadas.
 - **Ordena tus archivos**: les pone los nombres de los DAT (también a las pistas de un disco y a
-  su CUE), y mete los volcados de cartucho en zip, cada uno comprobado contra el DAT antes de borrar
-  su original. Ves cada cambio antes de hacerlo y todo se puede deshacer.
+  su CUE), mete los volcados de cartucho en zip y pasa las imágenes BIN/CUE e ISO de disco a CHD,
+  sin chdman; cada archivo nuevo se vuelve a leer y se comprueba contra el DAT antes de borrar su
+  original. Ves cada cambio antes de hacerlo y todo se puede deshacer.
 - **Te avisa** por Discord, Telegram o cualquier webhook: juegos nuevos en tu colección, sets que
   completas, archivos dañados y entradas nuevas en los DAT.
 - **Guarda una copia** de las bibliotecas, los DAT, los ajustes y los usuarios cada semana, y
@@ -179,8 +180,8 @@ en el [README en inglés](README.md#api).
 1. **Hecho**: el núcleo, los sistemas de cartucho, los DAT, los modos de recuento, la nueva
    interfaz, las portadas guardadas por el servidor, las estadísticas, la lista de deseos, la
    exportación a ES-DE y RetroArch, los sistemas de disco, y el renombrado y la compresión con
-   deshacer.
-2. Lo siguiente: crear CHD a partir de BIN/CUE e ISO, comprobados antes de borrar los originales.
+   deshacer, también a CHD.
+2. Lo siguiente: se aceptan ideas en las issues.
 
 ## Compilar
 

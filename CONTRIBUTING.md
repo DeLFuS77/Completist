@@ -24,7 +24,7 @@ Issues and pull requests are welcome. Discuss larger changes in an issue first.
 - `internal/platform`: the plugin interface; `cartridge` hashes dumps (headers, N64 byte order),
   `disc` the first track of CD images.
 - `internal/chd`: reads CHD v5 CD, GD-ROM and DVD images (LZMA, deflate, FLAC and Huffman hunks)
-  without chdman.
+  and writes CD and DVD images (cdzl and zlib), without chdman.
 - `internal/organize`: renaming to the DAT names and packing in zip files, with a journal to undo.
 - `internal/discimage`: GCZ and CSO read back as ISO; the disc header of RVZ, WIA and WBFS.
 - `internal/store`: SQLite (ncruces/go-sqlite3, no cgo), migrations, DAT import, matching.
@@ -60,7 +60,7 @@ make dev     # interface rebuilt on change, served from disk
 
 ## Roadmap
 
-1. CHD images made from BIN/CUE and ISO, checked before the originals are removed.
+1. Open: GDI dumps to CHD, RVZ checked by its content, zstd CHD.
 
 Known limits: 1G1R groups by title when the DAT has no parent/clone links (libretro DATs have
 none), so a game released under different titles counts more than once.

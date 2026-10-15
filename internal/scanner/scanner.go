@@ -281,11 +281,9 @@ func chdEntries(path string) ([]zipEntry, error) {
 }
 
 // the entries of a CHD: its image, or its tracks
-const chdImageEntry = "Image.iso"
+const chdImageEntry = chd.ImageEntry
 
-func trackEntry(n int) string {
-	return fmt.Sprintf("Track %d.bin", n)
-}
+var trackEntry = chd.TrackEntry
 
 type zipEntry struct {
 	name   string

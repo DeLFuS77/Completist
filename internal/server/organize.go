@@ -19,7 +19,7 @@ func (s *Server) organizeRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/organize", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		kind := q.Get("kind")
-		if kind != organize.KindZip {
+		if kind != organize.KindZip && kind != organize.KindCHD {
 			kind = organize.KindRename
 		}
 		plan, err := organize.MakePlan(r.Context(), s.Store, q.Get("system"), kind)
@@ -42,7 +42,7 @@ func (s *Server) organizeRoutes(mux *http.ServeMux) {
 			writeError(w, http.StatusBadRequest, "Choose the games to change.")
 			return
 		}
-		if in.Kind != organize.KindZip {
+		if in.Kind != organize.KindZip && in.Kind != organize.KindCHD {
 			in.Kind = organize.KindRename
 		}
 		if _, err := organize.MakePlan(r.Context(), s.Store, in.System, in.Kind); err != nil {
@@ -124,8 +124,11 @@ func (s *Server) runOrganize(system, kind string, ids []string, removeOriginals 
 	s.Tasks.Finish(id, nil)
 	if batch.Games > 0 {
 		action := activity.FilesRenamed
-		if kind == organize.KindZip {
+		switch kind {
+		case organize.KindZip:
 			action = activity.FilesPacked
+		case organize.KindCHD:
+			action = activity.FilesToCHD
 		}
 		s.recordAs(user, action, systemNames([]string{system}))
 	}

@@ -8,6 +8,9 @@ Organizing the files.
   of a disc after its first track, with the CUE sheet rewritten to match.
 - Pack cartridge dumps in zip files, one per game, each read back and checked against the DAT
   before its original is removed.
+- Turn BIN/CUE dumps and ISO files of disc systems into CHD images, written by Completist itself
+  (deflate, as chdman's cdzl and zlib codecs, read by every emulator), read back file by file and
+  checked against the DAT before the originals are removed; undoing it writes the originals again.
 - Every change is shown before it is made, runs as a task, is kept in a list and can be undone.
   Read-only libraries are left alone.
 

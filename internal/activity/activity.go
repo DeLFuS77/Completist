@@ -40,6 +40,7 @@ const (
 	WishRemoved       = "Removed from the wishlist"
 	FilesRenamed      = "Renamed files to the DAT names"
 	FilesPacked       = "Packed files in zips"
+	FilesToCHD        = "Made CHD images"
 	ChangeUndone      = "Undid a change to the files"
 )
 

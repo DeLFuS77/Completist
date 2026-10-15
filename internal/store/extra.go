@@ -158,24 +158,26 @@ func (s *Store) MatchedFiles(ctx context.Context) ([]Matched, error) {
 
 // Owned is a file that is a game of a DAT, with what renaming and compressing it needs.
 type Owned struct {
-	FileID   int64
-	Path     string
-	Entry    string
-	SHA1     string
-	CRC      string
-	AltForm  string
-	Rom      string // the file name the DAT gives
-	Game     string
-	GameID   int64
-	Library  string
-	ReadOnly bool
+	FileID    int64
+	LibraryID int64
+	System    string
+	Path      string
+	Entry     string
+	SHA1      string
+	CRC       string
+	AltForm   string
+	Rom       string // the file name the DAT gives
+	Game      string
+	GameID    int64
+	Library   string
+	ReadOnly  bool
 	// files in the same archive or image
 	Siblings int
 }
 
 // OwnedFiles returns the verified files of a system.
 func (s *Store) OwnedFiles(ctx context.Context, system string) ([]Owned, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT f.id, f.path, f.entry, f.sha1, f.crc, f.alt_form, r.name, g.name, g.id, l.path, l.read_only,
+	rows, err := s.db.QueryContext(ctx, `SELECT f.id, f.library_id, g.system, f.path, f.entry, f.sha1, f.crc, f.alt_form, r.name, g.name, g.id, l.path, l.read_only,
 			(SELECT COUNT(*) FROM files o WHERE o.path = f.path)
 		FROM files f JOIN roms r ON r.id = f.rom_id JOIN games g ON g.id = r.game_id JOIN libraries l ON l.id = f.library_id
 		WHERE f.status = 'ok' AND g.system = ? ORDER BY g.name, f.path, f.entry`, system)
@@ -186,7 +188,7 @@ func (s *Store) OwnedFiles(ctx context.Context, system string) ([]Owned, error) 
 	out := []Owned{}
 	for rows.Next() {
 		var o Owned
-		if err := rows.Scan(&o.FileID, &o.Path, &o.Entry, &o.SHA1, &o.CRC, &o.AltForm, &o.Rom, &o.Game, &o.GameID, &o.Library, &o.ReadOnly, &o.Siblings); err != nil {
+		if err := rows.Scan(&o.FileID, &o.LibraryID, &o.System, &o.Path, &o.Entry, &o.SHA1, &o.CRC, &o.AltForm, &o.Rom, &o.Game, &o.GameID, &o.Library, &o.ReadOnly, &o.Siblings); err != nil {
 			return nil, err
 		}
 		out = append(out, o)

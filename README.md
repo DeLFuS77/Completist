@@ -41,8 +41,9 @@ Unraid server or your computer, as one small program with its database inside.
 - **Exports** to RetroArch playlists and ES-DE gamelists, with the DAT names, so their box art
   shows too.
 - **Organizes your files**: renames them to the names of the DATs (the tracks of a disc and its
-  CUE sheet too), and packs cartridge dumps in zip files, each one checked against the DAT before
-  its original is removed. You see every change before it is made, and every change can be undone.
+  CUE sheet too), packs cartridge dumps in zip files and turns BIN/CUE and ISO images of discs into
+  CHD, without chdman; each new file is read back and checked against the DAT before its original
+  is removed. You see every change before it is made, and every change can be undone.
 - **Tells you the news** through Discord, Telegram or any webhook: games new in your collection,
   sets you complete, damaged files found and new entries in the DATs.
 - **Keeps a backup** of the libraries, DATs, settings and users every week, and keeps the last five;
@@ -191,8 +192,8 @@ is required (a read-only user is enough to read).
 
 1. **Done**: the core, cartridge systems, DATs, counting modes, the new interface, covers kept by
    the server, statistics, a wishlist, exports to ES-DE and RetroArch, the disc systems, and
-   renaming and packing with undo.
-2. Next: CHD images made from BIN/CUE and ISO, checked before the originals are removed.
+   renaming, zip and CHD with undo.
+2. Next: ideas welcome in the issues.
 
 ## Building
 

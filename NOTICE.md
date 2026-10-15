@@ -24,7 +24,7 @@ esbuild (MIT) builds the interface but is not part of it.
 The CHD reader (`internal/chd`) is written from [libchdr](https://github.com/rtissera/libchdr)
 (BSD 3-Clause) and the [MAME](https://github.com/mamedev/mame) sources, the LZMA decoder from the
 LZMA specification by Igor Pavlov (public domain) and the FLAC decoder from the FLAC format
-specification. Its test images were made with chdman. The GCZ, CSO, RVZ, WIA and WBFS
+specification. Its test images were made with chdman, which also checks the CHD files Completist writes. The GCZ, CSO, RVZ, WIA and WBFS
 readers (`internal/discimage`) follow the format descriptions of Dolphin and the PSP community.
 
 ## Data used at run time

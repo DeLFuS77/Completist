@@ -300,3 +300,10 @@ func (t *Track) WriteTo(w io.Writer) (written int64, err error) {
 	err = flush()
 	return written, err
 }
+
+// The entries a CHD is listed under in a library: the image of a DVD, or a track of a CD.
+const ImageEntry = "Image.iso"
+
+func TrackEntry(n int) string {
+	return fmt.Sprintf("Track %d.bin", n)
+}

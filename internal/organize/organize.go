@@ -56,6 +56,11 @@ type Action struct {
 	Entry string `json:"entry,omitempty"`
 	SHA1  string `json:"-"`
 	CRC   string `json:"-"`
+	// chd: the image it makes, cd or dvd, and the files it is made from
+	Image     string   `json:"image,omitempty"`
+	Sources   []string `json:"sources,omitempty"`
+	LibraryID int64    `json:"-"`
+	System    string   `json:"-"`
 }
 
 // Skipped is a file left as it is, and why.
@@ -111,6 +116,9 @@ func MakePlan(ctx context.Context, st *store.Store, system, kind string) (Plan, 
 	if kind == KindZip && sys.Disc() {
 		return plan, errors.New("Disc images are not packed in zip files.")
 	}
+	if kind == KindCHD && !sys.Disc() {
+		return plan, errors.New("Only disc images become CHD files.")
+	}
 	owned, err := st.OwnedFiles(ctx, system)
 	if err != nil {
 		return plan, err
@@ -155,6 +163,16 @@ func MakePlan(ctx context.Context, st *store.Store, system, kind string) (Plan, 
 			}
 			plan.Actions = append(plan.Actions, Action{ID: actionID(o.Path), Game: o.Game, GameID: o.GameID,
 				Moves: []Move{{From: o.Path, To: target}}, Entry: safeName(entry), SHA1: o.SHA1, CRC: o.CRC})
+		case KindCHD:
+			a, reason, done := planCHD(o, sys, taken)
+			switch {
+			case done:
+				plan.Done++
+			case reason != "":
+				skip(reason)
+			default:
+				plan.Actions = append(plan.Actions, a)
+			}
 		default:
 			a, reason, done := renameAction(o, sys, taken)
 			switch {
@@ -392,6 +410,9 @@ type Change struct {
 	SHA1  string `json:"sha1,omitempty"`
 	// a CUE sheet: its content before
 	Sheet string `json:"sheet,omitempty"`
+	// chd: the files it was made from, and the CUE sheet that listed them
+	Originals []Original `json:"originals,omitempty"`
+	CueSheet  string     `json:"cueSheet,omitempty"`
 }
 
 // Batch is a change made at once.
@@ -511,11 +532,16 @@ func Apply(ctx context.Context, st *store.Store, j *Journal, plan Plan, ids []st
 		}
 		var changes []Change
 		var err error
-		if plan.Kind == KindZip {
+		switch plan.Kind {
+		case KindZip:
 			var saved int64
 			changes, saved, err = pack(a, removeOriginals)
 			batch.Saved += saved
-		} else {
+		case KindCHD:
+			var saved int64
+			changes, saved, err = packCHD(ctx, st, a, removeOriginals)
+			batch.Saved += saved
+		default:
 			changes, err = rename(ctx, st, a)
 		}
 		if err != nil {
@@ -732,6 +758,8 @@ func Undo(ctx context.Context, st *store.Store, j *Journal, id int64) ([]Skipped
 		c := b.Changes[i]
 		var err error
 		switch {
+		case b.Kind == KindCHD:
+			err = unpackCHD(ctx, st, c)
 		case c.Sheet != "":
 			if exists(c.From) && c.From != c.To {
 				err = errors.New(ReasonTaken)

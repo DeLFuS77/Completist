@@ -2,6 +2,7 @@ package server
 
 import (
 	"archive/zip"
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -190,5 +191,74 @@ func TestPackAndUndo(t *testing.T) {
 	f.list("/api/organize?system=gb&kind=zip", &plan)
 	if len(plan.Actions) != 0 || len(plan.Skipped) != 1 {
 		t.Fatalf("read only: %+v", plan)
+	}
+}
+
+func TestCHDAndUndo(t *testing.T) {
+	f := newFullFixture(t)
+	track1 := bytes.Repeat([]byte("data sector "), 2352*30/12)
+	track2 := bytes.Repeat([]byte{1, 2, 3, 4}, 2352*12/4)
+	iso := bytes.Repeat([]byte("iso sector data!"), 2048*40/16)
+	f.do("POST", "/api/dats/import", "clrmamepro (\n\tname \"Sony - PlayStation\"\n)\n"+
+		"game (\n\tname \"Disc Game (Europe)\"\n"+romLine("Disc Game (Europe) (Track 1).bin", track1)+")\n")
+	f.do("POST", "/api/dats/import", "clrmamepro (\n\tname \"Sony - PlayStation 2\"\n)\n"+
+		"game (\n\tname \"Big Game (USA)\"\n"+romLine("Big Game (USA).iso", iso)+")\n")
+	cue := "FILE \"Disc Game (Europe) (Track 1).bin\" BINARY\n  TRACK 01 MODE2/2352\n    INDEX 01 00:00:00\nFILE \"Disc Game (Europe) (Track 2).bin\" BINARY\n  TRACK 02 AUDIO\n    INDEX 00 00:00:00\n    INDEX 01 00:00:05\n"
+	f.write("psx/Disc Game (Europe) (Track 1).bin", track1)
+	f.write("psx/Disc Game (Europe) (Track 2).bin", track2)
+	f.write("psx/Disc Game (Europe).cue", []byte(cue))
+	f.write("ps2/big.iso", iso)
+	f.do("POST", "/api/libraries", map[string]any{"path": f.library})
+	f.scanner.Run(context.Background(), "test")
+
+	for _, sys := range []string{"psx", "ps2"} {
+		var plan planJSON
+		f.list("/api/organize?system="+sys+"&kind=chd", &plan)
+		if len(plan.Actions) != 1 {
+			t.Fatalf("%s plan: %+v", sys, plan)
+		}
+		f.do("POST", "/api/organize", map[string]any{"system": sys, "kind": "chd", "ids": []string{plan.Actions[0].ID}, "removeOriginals": true})
+		f.waitOrganize()
+	}
+	if got := strings.Join(f.names("psx"), "|"); got != "Disc Game (Europe).chd" {
+		t.Fatalf("psx: %s", got)
+	}
+	if got := strings.Join(f.names("ps2"), "|"); got != "Big Game (USA).chd" {
+		t.Fatalf("ps2: %s", got)
+	}
+	// known at once: nothing to read again, the games still there
+	for _, sys := range []string{"psx", "ps2"} {
+		var s struct {
+			Have  int
+			Files struct{ Files int }
+		}
+		f.list("/api/systems/"+sys, &s)
+		if s.Have != 1 || s.Files.Files != 1 {
+			t.Fatalf("%s: %+v", sys, s)
+		}
+	}
+	// a scan finds them known
+	f.scanner.Run(context.Background(), "test")
+
+	var history []struct {
+		ID    int64
+		Saved int64
+	}
+	f.list("/api/organize/history", &history)
+	if len(history) != 2 || history[0].Saved <= 0 {
+		t.Fatalf("history: %+v", history)
+	}
+	for _, h := range history {
+		f.do("POST", "/api/organize/history/"+strconv.FormatInt(h.ID, 10)+"/undo", nil)
+		f.waitOrganize()
+	}
+	if got := strings.Join(f.names("psx"), "|"); got != "Disc Game (Europe) (Track 1).bin|Disc Game (Europe) (Track 2).bin|Disc Game (Europe).cue" {
+		t.Fatalf("psx undone: %s", got)
+	}
+	back, _ := os.ReadFile(filepath.Join(f.library, "psx", "Disc Game (Europe) (Track 2).bin"))
+	sheet, _ := os.ReadFile(filepath.Join(f.library, "psx", "Disc Game (Europe).cue"))
+	isoBack, _ := os.ReadFile(filepath.Join(f.library, "ps2", "big.iso"))
+	if !bytes.Equal(back, track2) || string(sheet) != cue || !bytes.Equal(isoBack, iso) {
+		t.Fatal("the originals are not the same")
 	}
 }
