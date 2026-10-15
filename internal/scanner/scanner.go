@@ -215,7 +215,14 @@ func (sc *Scanner) scanLibrary(ctx context.Context, taskID int64, lib store.Libr
 		}
 		key := store.Key{Path: path}
 		seen[key] = true
-		if c, ok := known[key]; ok && c.Ok && c.Size == info.Size() && c.Mtime == mtime {
+		size := info.Size()
+		if discimage.Expands(path) {
+			// a GCZ or CSO is known by the size of the ISO it holds, which its header says
+			if s, err := discimage.ImageSize(path); err == nil {
+				size = s
+			}
+		}
+		if c, ok := known[key]; ok && c.Ok && c.Size == size && c.Mtime == mtime {
 			return nil
 		}
 		todo = append(todo, candidate{library: lib, path: path, size: info.Size(), mtime: mtime, system: system})

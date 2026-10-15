@@ -120,6 +120,9 @@ func MakePlan(ctx context.Context, st *store.Store, system, kind string) (Plan, 
 	if kind == KindCHD && !sys.Disc() {
 		return plan, errors.New("Only disc images become CHD files.")
 	}
+	if (kind == KindCSO || kind == KindGCZ) && !imageSystemOK(kind, sys) {
+		return plan, errors.New("This system does not use this kind of image.")
+	}
 	owned, err := st.OwnedFiles(ctx, system)
 	if err != nil {
 		return plan, err
@@ -164,6 +167,16 @@ func MakePlan(ctx context.Context, st *store.Store, system, kind string) (Plan, 
 			}
 			plan.Actions = append(plan.Actions, Action{ID: actionID(o.Path), Game: o.Game, GameID: o.GameID,
 				Moves: []Move{{From: o.Path, To: target}}, Entry: safeName(entry), SHA1: o.SHA1, CRC: o.CRC})
+		case KindCSO, KindGCZ:
+			a, reason, done := planImage(o, kind, taken)
+			switch {
+			case done:
+				plan.Done++
+			case reason != "":
+				skip(reason)
+			default:
+				plan.Actions = append(plan.Actions, a)
+			}
 		case KindCHD:
 			a, reason, done := planCHD(o, sys, taken)
 			switch {
@@ -580,6 +593,10 @@ func Apply(ctx context.Context, st *store.Store, j *Journal, plan Plan, ids []st
 			var saved int64
 			changes, saved, err = packCHD(ctx, st, a, removeOriginals)
 			batch.Saved += saved
+		case KindCSO, KindGCZ:
+			var saved int64
+			changes, saved, err = packImage(ctx, st, a, plan.Kind, removeOriginals)
+			batch.Saved += saved
 		default:
 			changes, err = rename(ctx, st, a)
 		}
@@ -821,6 +838,8 @@ func Undo(ctx context.Context, st *store.Store, j *Journal, id int64) ([]Skipped
 		switch {
 		case b.Kind == KindCHD:
 			err = unpackCHD(ctx, st, *c)
+		case b.Kind == KindCSO || b.Kind == KindGCZ:
+			err = unpackImage(ctx, st, *c)
 		case c.Sheet != "":
 			err = restoreSheet(*c)
 		case b.Kind == KindZip:

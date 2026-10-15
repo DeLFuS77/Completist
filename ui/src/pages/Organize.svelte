@@ -15,8 +15,12 @@
 	const system = $derived(router.search.get('system') ?? systems[0]?.system.id ?? '');
 	const current = $derived(systems.find((s) => s.system.id === system)?.system);
 	const isDisc = $derived(current?.plugin === 'disc');
+	// the compressed ISO the emulators of a system read
+	const imageKind = $derived(current?.id === 'psp' ? 'cso' : current?.id === 'gamecube' || current?.id === 'wii' ? 'gcz' : '');
+	const imageName = $derived(imageKind.toUpperCase());
 	const kind = $derived.by(() => {
 		const k = router.search.get('kind');
+		if (k && k === imageKind) return k;
 		if (k === 'zip' && !isDisc) return 'zip';
 		if (k === 'chd' && isDisc && current?.id !== 'gamecube' && current?.id !== 'wii') return 'chd';
 		return 'rename';
@@ -54,7 +58,11 @@
 		if (!plan) return;
 		const ids = plan.actions.filter((a) => chosen[a.id]).map((a) => a.id);
 		const question =
-			kind === 'chd'
+			kind === imageKind
+				? removeOriginals
+					? t('Compress {n} ISO files into {f} and remove each ISO once its image is checked? It takes a while for big discs.', { n: n(ids.length), f: imageName })
+					: t('Compress {n} ISO files into {f}, keeping the ISO files? It takes a while for big discs.', { n: n(ids.length), f: imageName })
+				: kind === 'chd'
 				? removeOriginals
 					? t('Make {n} CHD images and remove the originals once each one is checked? It takes a while for big discs.', { n: n(ids.length) })
 					: t('Make {n} CHD images, keeping the originals? It takes a while for big discs.', { n: n(ids.length) })
@@ -89,7 +97,7 @@
 
 <h1 class="t-title">{t('Organize')}</h1>
 <p class="mt-2 max-w-prose text-mute">
-	{t('Give your files the names of the DATs, pack cartridge dumps in zip files, or turn disc images into CHD. Only verified files are changed, every change can be undone, and a new file is checked against the DAT before its original is removed.')}
+	{t('Give your files the names of the DATs, pack cartridge dumps in zip files, turn disc images into CHD, or compress PSP, GameCube and Wii ISO files into CSO and GCZ. Only verified files are changed, every change can be undone, and a new file is checked against the DAT before its original is removed.')}
 </p>
 
 {#if systems.length === 0}
@@ -105,7 +113,12 @@
 		<div class="flex gap-2" role="group" aria-label={t('Change')}>
 			<button class="chip" aria-pressed={kind === 'rename'} onclick={() => setParam('kind', null)}>{t('Rename')}</button>
 			{#if isDisc}
-				<button class="chip" aria-pressed={kind === 'chd'} onclick={() => setParam('kind', 'chd')} disabled={current?.id === 'gamecube' || current?.id === 'wii'} title={current?.id === 'gamecube' || current?.id === 'wii' ? t('Dolphin does not read CHD: RVZ is its compressed format.') : undefined}>{t('Make CHD')}</button>
+				{#if current?.id !== 'gamecube' && current?.id !== 'wii'}
+					<button class="chip" aria-pressed={kind === 'chd'} onclick={() => setParam('kind', 'chd')}>{t('Make CHD')}</button>
+				{/if}
+				{#if imageKind}
+					<button class="chip" aria-pressed={kind === imageKind} onclick={() => setParam('kind', imageKind)} title={imageKind === 'gcz' ? t('GCZ: the compressed format of Dolphin that gives back the ISO bit for bit.') : t('CSO: the compressed format PPSSPP and the PSP read.')}>{t('Compress to {f}', { f: imageName })}</button>
+				{/if}
 			{:else}
 				<button class="chip" aria-pressed={kind === 'zip'} onclick={() => setParam('kind', 'zip')}>{t('Pack in zip')}</button>
 			{/if}
@@ -119,7 +132,9 @@
 		<section class="mt-8" aria-labelledby="plan">
 			<h2 id="plan" class="t-section flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-[3px]" style="background: {systemColor(system)}"></span>{short(system)}</h2>
 			<p class="mt-2 text-sm text-mute">
-				{kind === 'zip'
+				{kind === imageKind
+					? t('{a} ISO files to compress, {d} compressed already, {s} left as they are.', { a: n(plan.actions.length), d: n(plan.done), s: n(plan.skipped.length) })
+					: kind === 'zip'
 					? t('{a} games to pack, {d} packed already, {s} left as they are.', { a: n(plan.actions.length), d: n(plan.done), s: n(plan.skipped.length) })
 					: kind === 'chd'
 						? t('{a} games to turn into CHD, {d} in CHD already, {s} left as they are.', { a: n(plan.actions.length), d: n(plan.done), s: n(plan.skipped.length) })
@@ -129,12 +144,12 @@
 			{#if plan.actions.length}
 				<div class="mt-4 flex flex-wrap items-center gap-4">
 					<button class="btn btn-primary" onclick={apply} disabled={busy || count === 0}>
-						<Icon name="tidy" />{kind === 'zip' ? t('Pack {n} games', { n: n(count) }) : kind === 'chd' ? t('Make {n} CHD', { n: n(count) }) : t('Rename {n} games', { n: n(count) })}
+						<Icon name="tidy" />{kind === imageKind ? t('Compress {n} into {f}', { n: n(count), f: imageName }) : kind === 'zip' ? t('Pack {n} games', { n: n(count) }) : kind === 'chd' ? t('Make {n} CHD', { n: n(count) }) : t('Rename {n} games', { n: n(count) })}
 					</button>
-					{#if kind === 'zip' || kind === 'chd'}
+					{#if kind !== 'rename'}
 						<label class="flex items-center gap-2 text-sm">
 							<input type="checkbox" bind:checked={removeOriginals} class="accent-[var(--color-gold)]" />
-							{kind === 'zip' ? t('Remove each original once its zip is checked') : t('Remove the originals once each CHD is checked')}
+							{kind === 'zip' ? t('Remove each original once its zip is checked') : kind === 'chd' ? t('Remove the originals once each CHD is checked') : t('Remove each ISO once its image is checked')}
 						</label>
 					{/if}
 					<span class="text-sm text-mute">
@@ -181,7 +196,7 @@
 				{#each history as b (b.id)}
 					<li class="flex flex-wrap items-center gap-x-4 gap-y-1 py-3 text-sm">
 						<span class="min-w-0 flex-1">
-							<span class="text-ink">{b.kind === 'zip' ? t('Packed {n} games of {s}', { n: n(b.games), s: short(b.system) }) : b.kind === 'chd' ? t('Made {n} CHD of {s}', { n: n(b.games), s: short(b.system) }) : t('Renamed {n} games of {s}', { n: n(b.games), s: short(b.system) })}</span>
+							<span class="text-ink">{b.kind === 'cso' || b.kind === 'gcz' ? t('Compressed {n} games of {s} into {f}', { n: n(b.games), s: short(b.system), f: b.kind.toUpperCase() }) : b.kind === 'zip' ? t('Packed {n} games of {s}', { n: n(b.games), s: short(b.system) }) : b.kind === 'chd' ? t('Made {n} CHD of {s}', { n: n(b.games), s: short(b.system) }) : t('Renamed {n} games of {s}', { n: n(b.games), s: short(b.system) })}</span>
 							{#if b.saved}<span class="text-good"> · {t('{b} saved', { b: bytes(b.saved) })}</span>{/if}
 							<span class="block text-mute">{date(b.time)}{b.user ? ` · ${b.user}` : ''}</span>
 						</span>

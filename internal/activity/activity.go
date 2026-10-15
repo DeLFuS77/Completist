@@ -41,6 +41,7 @@ const (
 	FilesRenamed      = "Renamed files to the DAT names"
 	FilesPacked       = "Packed files in zips"
 	FilesToCHD        = "Made CHD images"
+	FilesCompressed   = "Compressed ISO images"
 	ChangeUndone      = "Undid a change to the files"
 )
 

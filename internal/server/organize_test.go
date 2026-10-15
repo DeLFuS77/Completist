@@ -304,3 +304,82 @@ func TestUndoKeepsTheOnlyCopy(t *testing.T) {
 		t.Fatalf("marked undone: %+v", history)
 	}
 }
+
+func TestCompressImagesAndUndo(t *testing.T) {
+	f := newFullFixture(t)
+	pspISO := append(bytes.Repeat([]byte("umd sector data!"), 2048*60/16), make([]byte, 2048*20)...)
+	gcISO := bytes.Repeat([]byte("gamecube disc..."), 2048*50/16)
+	f.do("POST", "/api/dats/import", "clrmamepro (\n\tname \"Sony - PlayStation Portable\"\n)\n"+
+		"game (\n\tname \"Hand Game (Europe)\"\n"+romLine("Hand Game (Europe).iso", pspISO)+")\n")
+	f.do("POST", "/api/dats/import", "clrmamepro (\n\tname \"Nintendo - GameCube\"\n)\n"+
+		"game (\n\tname \"Cube Game (USA)\"\n"+romLine("Cube Game (USA).iso", gcISO)+")\n")
+	f.write("psp/hand.iso", pspISO)
+	f.write("gamecube/cube.iso", gcISO)
+	f.do("POST", "/api/libraries", map[string]any{"path": f.library})
+	f.scanner.Run(context.Background(), "test")
+
+	for _, c := range [][2]string{{"psp", "cso"}, {"gamecube", "gcz"}} {
+		var plan planJSON
+		f.list("/api/organize?system="+c[0]+"&kind="+c[1], &plan)
+		if len(plan.Actions) != 1 {
+			t.Fatalf("%s plan: %+v", c[0], plan)
+		}
+		f.do("POST", "/api/organize", map[string]any{"system": c[0], "kind": c[1], "ids": []string{plan.Actions[0].ID}, "removeOriginals": true})
+		f.waitOrganize()
+	}
+	if got := strings.Join(f.names("psp"), "|"); got != "Hand Game (Europe).cso" {
+		t.Fatalf("psp: %s", got)
+	}
+	if got := strings.Join(f.names("gamecube"), "|"); got != "Cube Game (USA).gcz" {
+		t.Fatalf("gamecube: %s", got)
+	}
+	f.scanner.Run(context.Background(), "test")
+	// the compressed images are known by the ISO size their header says: not read again
+	var tasks struct {
+		Tasks []struct {
+			ID    int64
+			Kind  string
+			Games int
+		}
+	}
+	f.list("/api/tasks", &tasks)
+	last := tasks.Tasks[0]
+	for _, task := range tasks.Tasks {
+		if task.Kind == "scan" && task.ID > last.ID || last.Kind != "scan" {
+			last = task
+		}
+	}
+	if last.Kind != "scan" || last.Games != 0 {
+		t.Fatalf("the last scan read %d files again", last.Games)
+	}
+	for _, sys := range []string{"psp", "gamecube"} {
+		var s struct{ Have int }
+		f.list("/api/systems/"+sys, &s)
+		if s.Have != 1 {
+			t.Fatalf("%s: %+v", sys, s)
+		}
+		// the wrong kind is refused
+		var plan planJSON
+		if sys == "psp" {
+			f.list("/api/organize?system=psp&kind=cso", &plan)
+			if plan.Done != 1 || len(plan.Actions) != 0 {
+				t.Fatalf("again: %+v", plan)
+			}
+		}
+	}
+
+	var history []struct{ ID, Saved int64 }
+	f.list("/api/organize/history", &history)
+	if len(history) != 2 || history[0].Saved <= 0 || history[1].Saved <= 0 {
+		t.Fatalf("history: %+v", history)
+	}
+	for _, h := range history {
+		f.do("POST", "/api/organize/history/"+strconv.FormatInt(h.ID, 10)+"/undo", nil)
+		f.waitOrganize()
+	}
+	a, _ := os.ReadFile(filepath.Join(f.library, "psp", "hand.iso"))
+	b, _ := os.ReadFile(filepath.Join(f.library, "gamecube", "cube.iso"))
+	if !bytes.Equal(a, pspISO) || !bytes.Equal(b, gcISO) || len(f.names("psp")) != 1 || len(f.names("gamecube")) != 1 {
+		t.Fatalf("not undone: %v %v", f.names("psp"), f.names("gamecube"))
+	}
+}

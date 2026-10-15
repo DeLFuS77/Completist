@@ -19,7 +19,7 @@ func (s *Server) organizeRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/organize", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		kind := q.Get("kind")
-		if kind != organize.KindZip && kind != organize.KindCHD {
+		if !organize.ValidKind(kind) {
 			kind = organize.KindRename
 		}
 		plan, err := organize.MakePlan(r.Context(), s.Store, q.Get("system"), kind)
@@ -42,7 +42,7 @@ func (s *Server) organizeRoutes(mux *http.ServeMux) {
 			writeError(w, http.StatusBadRequest, "Choose the games to change.")
 			return
 		}
-		if in.Kind != organize.KindZip && in.Kind != organize.KindCHD {
+		if !organize.ValidKind(in.Kind) {
 			in.Kind = organize.KindRename
 		}
 		if _, err := organize.MakePlan(r.Context(), s.Store, in.System, in.Kind); err != nil {
@@ -135,6 +135,8 @@ func (s *Server) runOrganize(system, kind string, ids []string, removeOriginals 
 			action = activity.FilesPacked
 		case organize.KindCHD:
 			action = activity.FilesToCHD
+		case organize.KindCSO, organize.KindGCZ:
+			action = activity.FilesCompressed
 		}
 		s.recordAs(user, action, systemNames([]string{system}))
 	}
@@ -168,7 +170,7 @@ func (s *Server) afterOrganize(kind string) {
 	s.changed()
 	// packed and unpacked files are read: a zip is small; a CHD made here is known already, and
 	// the originals put back by undoing it are read again
-	if kind == organize.KindZip || kind == organize.KindCHD {
+	if kind != organize.KindRename {
 		s.Scanner.Start(tasks.TriggerSettings)
 	}
 }
