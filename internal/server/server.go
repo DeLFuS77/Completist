@@ -321,18 +321,7 @@ func (s *Server) routes(mux *http.ServeMux) {
 		writeJSON(w, http.StatusOK, map[string]any{"mode": mode, "total": total, "offset": offset, "items": out[offset:end], "regions": regions})
 	})
 
-	mux.HandleFunc("GET /api/systems/{id}/files", func(w http.ResponseWriter, r *http.Request) {
-		status := r.URL.Query().Get("status")
-		if status == "" {
-			status = "unknown"
-		}
-		files, err := s.Store.FilesWithStatus(r.Context(), r.PathValue("id"), status, 1000)
-		if err != nil {
-			s.fail(w, err)
-			return
-		}
-		writeJSON(w, http.StatusOK, files)
-	})
+	mux.HandleFunc("GET /api/systems/{id}/files", s.reviewFiles)
 
 	mux.HandleFunc("GET /api/games/{id}", func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)

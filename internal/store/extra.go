@@ -264,3 +264,31 @@ func (s *Store) SpaceFiles(ctx context.Context) ([]SpaceFile, error) {
 	}
 	return out, rows.Err()
 }
+
+// Expected is a file of the DAT, as it should be.
+type Expected struct {
+	Name string `json:"name"`
+	Size int64  `json:"size"`
+	CRC  string `json:"crc"`
+}
+
+// ExpectedByStem lists the files of the DAT of a system by their name without extension, for
+// the files that have such a name but other content.
+func (s *Store) ExpectedByStem(ctx context.Context, system string) (map[string][]Expected, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT r.stem, r.name, r.size, r.crc FROM roms r JOIN games g ON g.id = r.game_id
+		WHERE g.system = ? AND r.stem IN (SELECT stem FROM files WHERE system = ? AND status = 'bad')`, system, system)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string][]Expected{}
+	for rows.Next() {
+		var stem string
+		var e Expected
+		if err := rows.Scan(&stem, &e.Name, &e.Size, &e.CRC); err != nil {
+			return nil, err
+		}
+		out[stem] = append(out[stem], e)
+	}
+	return out, rows.Err()
+}

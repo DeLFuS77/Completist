@@ -264,3 +264,14 @@ export interface MosaicRow {
 	/** base64, one bit per entry in name order: 1 when owned */
 	bits: string;
 }
+
+export interface ReviewFile extends GameFile {
+	reason: string;
+	expected?: { name: string; size: number; crc: string }[];
+}
+
+export interface Review {
+	files: ReviewFile[];
+	reasons: Record<string, number>;
+	dat: { name: string; version: string; source: string; imported: string } | null;
+}

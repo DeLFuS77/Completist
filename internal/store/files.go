@@ -124,7 +124,7 @@ func (s *Store) FilesWithStatus(ctx context.Context, system string, status strin
 }
 
 func (s *Store) queryFiles(ctx context.Context, where string, args ...any) ([]File, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT f.id, f.library_id, f.path, f.entry, f.size, f.mtime, f.system, f.crc, f.md5, f.sha1, f.alt_form, f.status, f.error,
+	rows, err := s.db.QueryContext(ctx, `SELECT f.id, f.library_id, f.path, f.entry, f.size, f.mtime, f.system, f.crc, f.md5, f.sha1, f.alt_form, f.status, f.error, f.stem,
 		COALESCE((SELECT r.game_id FROM roms r WHERE r.id = f.rom_id), 0) FROM files f `+where, args...)
 	if err != nil {
 		return nil, err
@@ -133,7 +133,7 @@ func (s *Store) queryFiles(ctx context.Context, where string, args ...any) ([]Fi
 	out := []File{}
 	for rows.Next() {
 		var f File
-		if err := rows.Scan(&f.ID, &f.LibraryID, &f.Path, &f.Entry, &f.Size, &f.Mtime, &f.System, &f.CRC, &f.MD5, &f.SHA1, &f.AltForm, &f.Status, &f.Error, &f.GameID); err != nil {
+		if err := rows.Scan(&f.ID, &f.LibraryID, &f.Path, &f.Entry, &f.Size, &f.Mtime, &f.System, &f.CRC, &f.MD5, &f.SHA1, &f.AltForm, &f.Status, &f.Error, &f.Stem, &f.GameID); err != nil {
 			return nil, err
 		}
 		out = append(out, f)

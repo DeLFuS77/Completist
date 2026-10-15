@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { get, type Entry, type GameFile, type GameList, type Progress } from '../lib/api';
+	import { get, type Entry, type GameList, type Progress, type Review } from '../lib/api';
 	import { collection } from '../lib/state.svelte';
 	import { router, setParam } from '../lib/router.svelte';
 	import { systemColor, systemTint } from '../lib/systems';
-	import { t, n, plural } from '../lib/i18n.svelte';
+	import { t, n, plural, bytes } from '../lib/i18n.svelte';
 	import Cover from '../components/Cover.svelte';
 	import Bar from '../components/Bar.svelte';
 	import Icon from '../components/Icon.svelte';
@@ -70,12 +70,51 @@
 
 	// files to review
 	const fileStatus = $derived(router.search.get('files') ?? '');
-	let files = $state<GameFile[]>([]);
+	const reviewStatus = $derived(fileStatus || (progress && progress.files.bad === 0 ? 'unknown' : 'bad'));
+	const reason = $derived(router.search.get('why') ?? '');
+	let review = $state<Review | null>(null);
 	$effect(() => {
 		collection.version;
-		const status = fileStatus || 'bad';
-		get<GameFile[]>(`/api/systems/${id}/files?status=${status}`).then((f) => (files = f)).catch(() => (files = []));
+		const status = reviewStatus;
+		const why = reason;
+		get<Review>(`/api/systems/${id}/files?status=${status}${why ? `&reason=${why}` : ''}`)
+			.then((r) => (review = r))
+			.catch(() => (review = null));
 	});
+	const fromLibretro = $derived(review?.dat?.source === 'libretro-database');
+	// why a file is to review, in the order they are shown, with what it means and what to do
+	const reasonText = $derived<Record<string, { title: string; text: string }>>({
+		size: {
+			title: t('Another size than the DAT'),
+			text: t('The name is right but the size is not. Most often it is another dump of the game, from a set older or newer than the DAT; it can also be a trimmed, padded or damaged file. If your set is from another date, a DAT of that date recognises it.')
+		},
+		content: {
+			title: t('Same size, other content'),
+			text: t('The name and the size are right, the content is not: another revision, a hack, a patched or damaged file, or a dump the DAT has since replaced.')
+		},
+		prerelease: {
+			title: t('Betas, prototypes and demos'),
+			text: fromLibretro
+				? t('The DATs of libretro-database leave out betas, prototypes and demos, so they are not recognised. Import the official No-Intro or Redump DAT to recognise them.')
+				: t('This DAT does not list them.')
+		},
+		homebrew: {
+			title: t('Homebrew and unlicensed games'),
+			text: fromLibretro
+				? t('New games for old systems and unlicensed releases. libretro-database lists only part of them; the official No-Intro DAT has more.')
+				: t('New games for old systems and unlicensed releases that this DAT does not list.')
+		},
+		pirate: { title: t('Pirate releases'), text: t('Bootleg cartridges. Few DATs list them all.') },
+		hack: { title: t('Hacks, translations and tagged dumps'), text: t('Files changed by fans, or named with GoodTools tags such as [b] (bad dump) or [T+] (translation). No-Intro and Redump do not list them.') },
+		program: { title: t('Test programs and tools'), text: t('Software that is not a game, such as test suites.') },
+		nodat: { title: t('No DAT for this system'), text: t('Download or import a DAT in Settings > DATs to identify them.') },
+		other: {
+			title: t('Not in the DAT'),
+			text: t('A release newer than the DAT, a bad dump or a file nobody verified. Updating the DATs, or importing the official one, may recognise it.')
+		}
+	});
+	const reasonOrder = ['size', 'content', 'prerelease', 'homebrew', 'pirate', 'hack', 'program', 'nodat', 'other'];
+	const shownReasons = $derived(reasonOrder.filter((r) => review?.reasons[r]));
 	const reviewCounts = $derived(progress ? { bad: progress.files.bad, unknown: progress.files.unknown + progress.files.noDat } : { bad: 0, unknown: 0 });
 
 	let searchValue = $state('');
@@ -190,22 +229,61 @@
 		<section id="files" class="mt-14" aria-labelledby="files-title">
 			<h2 id="files-title" class="t-section">{t('Files to review')}</h2>
 			<div class="mt-4 flex gap-2" role="group">
-				{#if reviewCounts.bad}<button class="chip" aria-pressed={(fileStatus || 'bad') === 'bad'} onclick={() => setParam('files', 'bad')}>{t('Damaged or modified')} <span class="t-num opacity-70">{n(reviewCounts.bad)}</span></button>{/if}
-				{#if reviewCounts.unknown}<button class="chip" aria-pressed={fileStatus === 'unknown'} onclick={() => setParam('files', 'unknown')}>{t('Not identified')} <span class="t-num opacity-70">{n(progress.files.unknown)}</span></button>{/if}
+				{#if reviewCounts.bad}<button class="chip" aria-pressed={reviewStatus === 'bad'} onclick={() => { setParam('why', null); setParam('files', 'bad'); }}>{t('Damaged or modified')} <span class="t-num opacity-70">{n(reviewCounts.bad)}</span></button>{/if}
+				{#if reviewCounts.unknown}<button class="chip" aria-pressed={reviewStatus === 'unknown'} onclick={() => { setParam('why', null); setParam('files', 'unknown'); }}>{t('Not identified')} <span class="t-num opacity-70">{n(reviewCounts.unknown)}</span></button>{/if}
 			</div>
 			<p class="mt-3 max-w-prose text-sm text-mute">
-				{(fileStatus || 'bad') === 'bad'
-					? t('These files have the name of a game of the DAT, but their content is different: a bad dump, a hack or a damaged file.')
-					: t('These files are not in the DAT: hacks, translations, homebrew or dumps nobody verified.')}
+				{reviewStatus === 'bad'
+					? t('These files have the name of a game of the DAT, but their checksums are different, so they do not count as that game.')
+					: t('These files are not in the DAT, so they do not count for any game. That is not always a problem: here is why each group is not recognised.')}
+				{#if review?.dat}
+					{t('Compared with {dat}, version {v} ({source}).', { dat: review.dat.name, v: review.dat.version || '?', source: fromLibretro ? 'libretro-database' : t('imported by you') })}
+				{/if}
 			</p>
-			<ul class="mt-4 divide-y divide-line/60 text-sm">
-				{#each files as f (f.id)}
-					<li class="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-2">
-						<span class="min-w-0 flex-1 break-all">{f.entry ? `${f.path} › ${f.entry}` : f.path}</span>
-						<span class="font-mono text-xs text-faint">CRC {f.crc}</span>
+
+			{#if shownReasons.length}
+				<ul class="mt-5 grid gap-3 sm:grid-cols-2">
+					{#each shownReasons as r (r)}
+						<li>
+							<button class="panel block h-full w-full p-4 text-left ring-1 transition-colors hover:ring-gold/60" class:ring-gold={reason === r} class:ring-transparent={reason !== r} aria-pressed={reason === r} onclick={() => setParam('why', reason === r ? null : r)}>
+								<span class="flex items-baseline justify-between gap-3">
+									<span class="font-semibold">{reasonText[r]?.title ?? r}</span>
+									<span class="t-num text-mute">{n(review?.reasons[r] ?? 0)}</span>
+								</span>
+								<span class="mt-1 block text-sm text-mute">{reasonText[r]?.text}</span>
+							</button>
+						</li>
+					{/each}
+				</ul>
+				{#if fromLibretro && reviewStatus === 'unknown' && ((review?.reasons.prerelease ?? 0) + (review?.reasons.homebrew ?? 0) > 0)}
+					<p class="mt-3 text-sm"><a href="/settings/dats" class="text-gold underline underline-offset-4">{t('Import an official DAT')}</a></p>
+				{/if}
+			{/if}
+
+			<ul class="mt-6 divide-y divide-line/60 text-sm">
+				{#each review?.files ?? [] as f (f.id)}
+					<li class="py-2.5">
+						<div class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+							<span class="min-w-0 flex-1 break-words">
+								<span class="text-ink">{f.path.split(/[\\/]/).pop()}{f.entry && f.entry !== f.path.split(/[\\/]/).pop() ? ` › ${f.entry}` : ''}</span>
+								<span class="block break-all text-xs text-faint">{f.path.slice(0, Math.max(0, f.path.length - (f.path.split(/[\\/]/).pop()?.length ?? 0) - 1))}</span>
+							</span>
+							{#if !reason && reasonText[f.reason]}<span class="text-xs text-faint">{reasonText[f.reason].title}</span>{/if}
+						</div>
+						{#if f.expected?.length}
+							<div class="mt-1 grid gap-x-4 font-mono text-xs text-mute sm:grid-cols-[auto_1fr]">
+								<span>{t('Yours')}</span><span>{bytes(f.size)} · CRC {f.crc}</span>
+								{#each f.expected as e}
+									<span>{t('The DAT')}</span><span class:text-warn={e.size !== f.size}>{bytes(e.size)} · CRC {e.crc.toLowerCase()} <span class="font-sans text-faint">{e.name}</span></span>
+								{/each}
+							</div>
+						{:else}
+							<div class="mt-0.5 font-mono text-xs text-faint">{bytes(f.size)} · CRC {f.crc}</div>
+						{/if}
 					</li>
 				{/each}
 			</ul>
+			{#if review && review.files.length >= 1000}<p class="mt-2 text-sm text-mute">{t('The first 1,000 files are shown.')}</p>{/if}
 		</section>
 	{/if}
 {/if}
