@@ -207,3 +207,60 @@ func (s *Store) RemovePath(ctx context.Context, path string) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM files WHERE path = ?`, path)
 	return err
 }
+
+// DatRom is a file of a game of a DAT, for writing a DAT.
+type DatRom struct {
+	Game string
+	Name string
+	Size int64
+	CRC  string
+	MD5  string
+	SHA1 string
+}
+
+// DatRoms returns the files of every game of a system, by game.
+func (s *Store) DatRoms(ctx context.Context, system string) (map[string][]DatRom, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT g.name, r.name, r.size, r.crc, r.md5, r.sha1 FROM roms r JOIN games g ON g.id = r.game_id
+		WHERE g.system = ? ORDER BY g.name, r.name`, system)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string][]DatRom{}
+	for rows.Next() {
+		var r DatRom
+		if err := rows.Scan(&r.Game, &r.Name, &r.Size, &r.CRC, &r.MD5, &r.SHA1); err != nil {
+			return nil, err
+		}
+		out[r.Game] = append(out[r.Game], r)
+	}
+	return out, rows.Err()
+}
+
+// SpaceFile is a file found in a library, for counting the space.
+type SpaceFile struct {
+	Path   string
+	Entry  string
+	Size   int64
+	System string
+	Status string
+	RomID  int64
+}
+
+// SpaceFiles returns every file of the libraries.
+func (s *Store) SpaceFiles(ctx context.Context) ([]SpaceFile, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT path, entry, size, system, status, COALESCE(rom_id, 0) FROM files ORDER BY path, entry`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []SpaceFile{}
+	for rows.Next() {
+		var f SpaceFile
+		if err := rows.Scan(&f.Path, &f.Entry, &f.Size, &f.System, &f.Status, &f.RomID); err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, rows.Err()
+}

@@ -106,6 +106,9 @@
 						{progress.missing === 0 ? t('Nothing missing') : t('{n} missing', { n: n(progress.missing) })}
 					</span>
 					<a href="/settings/counting" class="text-sm text-mute underline decoration-line underline-offset-4 hover:text-ink">{modeName(progress.mode)}</a>
+					{#if progress.missing > 0}
+						<a href="/api/systems/{id}/fixdat" download class="inline-flex items-center gap-1 text-sm text-mute underline decoration-line underline-offset-4 hover:text-ink" title={t('A DAT with only the games you are missing, for other tools to look for them.')}><Icon name="download" size={14} />{t('Fixdat of what is missing')}</a>
+					{/if}
 				</div>
 				<div class="mt-3"><Bar value={progress.have} total={progress.total} {color} height={10} label={progress.system.short} /></div>
 			</div>

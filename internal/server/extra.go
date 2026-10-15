@@ -21,6 +21,8 @@ func (s *Server) recordHistory(ctx context.Context) {
 }
 
 func (s *Server) extraRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /api/systems/{id}/fixdat", s.fixdat)
+	mux.HandleFunc("GET /api/space", s.space)
 	mux.HandleFunc("GET /api/stats", func(w http.ResponseWriter, r *http.Request) {
 		out, err := stats.Build(r.Context(), s.Store, s.Progress, time.Now())
 		if err != nil {

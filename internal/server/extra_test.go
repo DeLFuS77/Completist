@@ -17,6 +17,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/DeLFuS77/completist/internal/dat"
 )
 
 func (f *fullFixture) raw(path string) *httptest.ResponseRecorder {
@@ -232,5 +234,58 @@ func TestBoxArtKeptSmaller(t *testing.T) {
 	f.list("/api/covers", &usage)
 	if usage["mode"] != "high" || usage["images"] != 3.0 {
 		t.Fatalf("usage: %v", usage)
+	}
+}
+
+func TestFixdat(t *testing.T) {
+	f := newFullFixture(t)
+	a, b := content(81, 64), content(82, 64)
+	f.do("POST", "/api/dats/import", gbDat(map[string][]byte{"Alpha (World)": a, "Beta & Co (USA)": b}))
+	f.write("gb/a.gb", a)
+	f.do("POST", "/api/libraries", map[string]any{"path": f.library})
+	f.scanner.Run(context.Background(), "test")
+	rec := f.raw("/api/systems/gb/fixdat")
+	body := rec.Body.String()
+	if rec.Code != 200 || !strings.Contains(rec.Header().Get("Content-Disposition"), "Fix_Nintendo - Game Boy") ||
+		!strings.Contains(body, `<game name="Beta &amp; Co (USA)">`) || strings.Contains(body, "Alpha") {
+		t.Fatalf("fixdat: %d %s", rec.Code, body)
+	}
+	// a fixdat is a DAT: it imports
+	d, err := dat.Parse(strings.NewReader(body))
+	if err != nil || len(d.Games) != 1 || d.Games[0].Roms[0].SHA1 == "" {
+		t.Fatalf("parse: %v %+v", err, d)
+	}
+}
+
+func TestSpace(t *testing.T) {
+	f := newFullFixture(t)
+	a, b := content(91, 1000), content(92, 1000)
+	f.do("POST", "/api/dats/import", gbDat(map[string][]byte{"Alpha (World)": a, "Beta (World)": b}))
+	f.write("gb/a.gb", a)
+	f.write("gb/copy/a.gb", a)
+	f.write("gb/odd.gb", content(93, 500))
+	f.do("POST", "/api/libraries", map[string]any{"path": f.library})
+	f.scanner.Run(context.Background(), "test")
+	var space struct {
+		Total struct {
+			Files int
+			Bytes int64
+		}
+		Systems []struct {
+			System                                   string
+			Total, Duplicates, Unknown, Compressible struct {
+				Files int
+				Bytes int64
+			}
+			CompressTo string
+		}
+	}
+	f.list("/api/space", &space)
+	if space.Total.Bytes != 2500 || len(space.Systems) != 1 {
+		t.Fatalf("space: %+v", space)
+	}
+	s := space.Systems[0]
+	if s.Duplicates.Bytes != 1000 || s.Unknown.Bytes != 500 || s.Compressible.Bytes != 1000 || s.CompressTo != "zip" {
+		t.Fatalf("gb: %+v", s)
 	}
 }

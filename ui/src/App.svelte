@@ -11,6 +11,7 @@
 	import Stats from './pages/Stats.svelte';
 	import Wishlist from './pages/Wishlist.svelte';
 	import Organize from './pages/Organize.svelte';
+	import Space from './pages/Space.svelte';
 	import Settings from './pages/Settings.svelte';
 	import Login from './pages/Login.svelte';
 
@@ -45,13 +46,14 @@
 		if (href === '/stats') return r.name === 'stats';
 		if (href === '/wishlist') return r.name === 'wishlist';
 		if (href === '/organize') return r.name === 'organize';
+		if (href === '/space') return r.name === 'space';
 		if (href === '/settings') return r.name === 'settings';
 		return r.name === 'system' && href === `/systems/${r.id}`;
 	};
 	$effect(() => {
 		const r = route;
 		const sys = r.name === 'system' ? systems.find((s) => s.system.id === r.id)?.system.short : '';
-		const names: Record<string, string> = { tasks: t('Tasks'), settings: t('Settings'), stats: t('Statistics'), wishlist: t('Wishlist'), organize: t('Organize') };
+		const names: Record<string, string> = { tasks: t('Tasks'), settings: t('Settings'), stats: t('Statistics'), wishlist: t('Wishlist'), organize: t('Organize'), space: t('Space') };
 		document.title = sys ? `${sys} – Completist` : names[r.name] ? `${names[r.name]} – Completist` : 'Completist';
 	});
 </script>
@@ -75,6 +77,7 @@
 				<a href="/" class="navlink" aria-current={current('/') ? 'page' : undefined}><Icon name="home" />{t('Home')}</a>
 				<a href="/stats" class="navlink" aria-current={current('/stats') ? 'page' : undefined}><Icon name="chart" />{t('Statistics')}</a>
 				<a href="/wishlist" class="navlink" aria-current={current('/wishlist') ? 'page' : undefined}><Icon name="star" />{t('Wishlist')}</a>
+				<a href="/space" class="navlink" aria-current={current('/space') ? 'page' : undefined}><Icon name="disk" />{t('Space')}</a>
 				{#if systems.length}
 					<div class="mt-5 px-3 pb-2 text-sm text-faint">{t('Systems')}</div>
 					{#each systems as s (s.system.id)}
@@ -126,6 +129,7 @@
 				{:else if route.name === 'stats'}<Stats />
 				{:else if route.name === 'wishlist'}<Wishlist />
 				{:else if route.name === 'organize'}<Organize />
+				{:else if route.name === 'space'}<Space />
 				{:else if route.name === 'settings'}<Settings tab={route.tab} />
 				{:else}
 					<h1 class="t-title">{t('This page does not exist')}</h1>
