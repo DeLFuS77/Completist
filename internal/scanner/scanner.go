@@ -150,6 +150,14 @@ func (sc *Scanner) scanLibrary(ctx context.Context, taskID int64, lib store.Libr
 	seen := map[store.Key]bool{}
 	todo := []candidate{}
 	discSheets := &sheets{}
+	// the entries known of each archive: an archive that has not changed since is not opened
+	// again, which matters on a slow volume
+	knownEntries := map[string][]store.Key{}
+	for k := range known {
+		if k.Entry != "" {
+			knownEntries[k.Path] = append(knownEntries[k.Path], k)
+		}
+	}
 	archives := []archive{}
 	found := 0
 	reported := time.Now()
@@ -181,6 +189,21 @@ func (sc *Scanner) scanLibrary(ctx context.Context, taskID int64, lib store.Libr
 		if strings.EqualFold(filepath.Ext(path), ".zip") || strings.EqualFold(filepath.Ext(path), ".chd") {
 			// a zip or a CHD: its entries come from the archive itself, read below, several
 			// at a time, as a network share or a Docker volume answers slowly
+			if keys := knownEntries[path]; len(keys) > 0 {
+				unchanged := true
+				for _, k := range keys {
+					if c := known[k]; !c.Ok || c.Mtime != mtime {
+						unchanged = false
+						break
+					}
+				}
+				if unchanged {
+					for _, k := range keys {
+						seen[k] = true
+					}
+					return nil
+				}
+			}
 			archives = append(archives, archive{path: path, mtime: mtime, system: system})
 			return nil
 		}
