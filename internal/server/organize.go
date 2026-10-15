@@ -62,7 +62,13 @@ func (s *Server) organizeRoutes(mux *http.ServeMux) {
 	})
 
 	mux.HandleFunc("GET /api/organize/history", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, s.Journal.List())
+		list, err := s.Journal.List()
+		if err != nil {
+			s.Log.Error("the list of changes cannot be read", "error", err)
+			writeError(w, http.StatusInternalServerError, "The list of changes (organize.json in the data folder) is damaged: no file is changed until it is repaired or removed.")
+			return
+		}
+		writeJSON(w, http.StatusOK, list)
 	})
 
 	mux.HandleFunc("POST /api/organize/history/{id}/undo", func(w http.ResponseWriter, r *http.Request) {

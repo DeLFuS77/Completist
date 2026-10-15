@@ -490,11 +490,10 @@ func (j *Journal) write(batches []Batch) error {
 }
 
 // List returns the batches, newest first.
-func (j *Journal) List() []Batch {
+func (j *Journal) List() ([]Batch, error) {
 	j.mutex.Lock()
 	defer j.mutex.Unlock()
-	batches, _ := j.read()
-	return batches
+	return j.read()
 }
 
 func (j *Journal) add(b Batch) (Batch, error) {
@@ -529,7 +528,8 @@ func (j *Journal) update(b Batch) error {
 
 // Get returns a batch.
 func (j *Journal) Get(id int64) (Batch, bool) {
-	for _, b := range j.List() {
+	batches, _ := j.List()
+	for _, b := range batches {
 		if b.ID == id {
 			return b, true
 		}
@@ -546,6 +546,10 @@ type Progress func(done, total int, name string)
 // the store, so they are not read again; zips are checked against the DAT before the original
 // is removed.
 func Apply(ctx context.Context, st *store.Store, j *Journal, plan Plan, ids []string, removeOriginals bool, user string, progress Progress) (Batch, []Skipped, error) {
+	// nothing is changed unless it can be recorded, to be undone
+	if _, err := j.List(); err != nil {
+		return Batch{}, nil, err
+	}
 	chosen := map[string]bool{}
 	for _, id := range ids {
 		chosen[id] = true

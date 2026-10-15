@@ -314,6 +314,7 @@ export const es: Record<string, string> = {
 	'Changed the password of a user': 'Cambió la contraseña de un usuario',
 	'Deleted a user': 'Eliminó un usuario',
 	'Removed the stored images': 'Borró las imágenes guardadas',
+	'The list of changes (organize.json in the data folder) is damaged: no file is changed until it is repaired or removed.': 'La lista de cambios (organize.json en la carpeta de datos) está dañada: no se cambia ningún archivo hasta que se repare o se borre.',
 	'Left as it is: another file of the game could not be undone.': 'Se queda como está: otro archivo del juego no se ha podido deshacer.',
 	'The original is no longer there as it was: the zip is kept.': 'El original ya no está como estaba: el zip se conserva.',
 	'An original is no longer there as it was: the CHD is kept.': 'Un original ya no está como estaba: el CHD se conserva.',

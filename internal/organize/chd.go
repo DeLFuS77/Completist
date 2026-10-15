@@ -378,5 +378,7 @@ func unpackCHD(ctx context.Context, st *store.Store, c Change) error {
 	if err := os.Remove(c.To); err != nil {
 		return err
 	}
-	return st.RemovePath(ctx, c.To)
+	// the files are right whatever the store says: the scan that follows brings it up to date
+	st.RemovePath(ctx, c.To)
+	return nil
 }
