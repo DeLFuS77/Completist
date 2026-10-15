@@ -32,17 +32,19 @@
 		)
 	);
 
-	// tiles as large as fit in about 300 px of height, between 3 and 11 px
+	// tiles as large as fit in about 300 px of height, up to 11 px; a big collection on a narrow
+	// screen gets tiles of one or two pixels, so the page does not become a wall of tiles
 	const layout = $derived.by(() => {
 		const total = Math.max(1, tiles.length);
 		const target = 300;
-		let size = Math.floor(Math.sqrt((width * target) / total));
-		size = Math.max(3, Math.min(11, size));
-		const gap = size >= 6 ? 2 : 1;
-		const step = size + gap;
-		const perRow = Math.max(1, Math.floor((width + gap) / step));
-		const height = Math.ceil(total / perRow) * step - gap;
-		return { size, gap, step, perRow, height: Math.max(height, 0) };
+		for (let size = 11; size >= 1; size--) {
+			const gap = size >= 6 ? 2 : size >= 3 ? 1 : 0;
+			const step = size + gap;
+			const perRow = Math.max(1, Math.floor((width + gap) / step));
+			const height = Math.ceil(total / perRow) * step - gap;
+			if (height <= target || size === 1) return { size, gap, step, perRow, height: Math.max(height, 0) };
+		}
+		return { size: 1, gap: 0, step: 1, perRow: Math.max(1, width), height: 0 };
 	});
 
 	let progress = 0; // 0..1 of the sweep

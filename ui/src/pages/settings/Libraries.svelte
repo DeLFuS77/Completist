@@ -105,7 +105,7 @@
 	{#each libraries as lib (lib.id)}
 		<li class="panel flex flex-wrap items-center gap-4 p-4">
 			<span class="grid h-10 w-10 place-items-center rounded-xl bg-raised text-mute"><Icon name="folder" /></span>
-			<div class="min-w-0 flex-1">
+			<div class="min-w-0 flex-1 basis-48">
 				<div class="font-semibold">{lib.name}</div>
 				<div class="break-all text-sm text-mute">{lib.path}</div>
 			</div>
