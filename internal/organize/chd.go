@@ -34,6 +34,8 @@ type Original struct {
 	SHA1 string `json:"sha1"`
 	// the tracks of the CHD it holds, in order; none for an ISO
 	Tracks []int `json:"tracks,omitempty"`
+	// removed once the CHD was checked
+	Removed bool `json:"removed,omitempty"`
 }
 
 func planCHD(o store.Owned, sys *systems.System, taken map[string]bool) (Action, string, bool) {
@@ -72,10 +74,11 @@ func planCHD(o store.Owned, sys *systems.System, taken map[string]bool) (Action,
 		if err != nil {
 			return Action{}, ReasonLayout, false
 		}
-		// every file must be read whole by its tracks, so it can be made again
+		// every file must be read whole by its tracks, one after the other, so it can be made again
 		files := map[string]bool{}
 		for i, t := range tracks {
-			if !files[t.File] && t.Offset != 0 {
+			continues := i > 0 && tracks[i-1].File == t.File
+			if !continues && (files[t.File] || t.Offset != 0) {
 				return Action{}, ReasonLayout, false
 			}
 			files[t.File] = true
@@ -125,8 +128,7 @@ func fileSHA1(path string) (string, int64, error) {
 // the store with the checksums the DAT knows, and only then removes the originals.
 func packCHD(ctx context.Context, st *store.Store, a Action, removeOriginals bool) ([]Change, int64, error) {
 	m := a.Moves[0]
-	tmp := m.To + ".tmp"
-	os.Remove(tmp)
+	tmp := tempName(m.To)
 	originals := []Original{}
 	var tracks []chd.TrackSource
 	var err error
@@ -198,21 +200,23 @@ func packCHD(ctx context.Context, st *store.Store, a Action, removeOriginals boo
 	}
 	var saved int64
 	if removeOriginals {
+		// each removal is recorded, so undoing makes again exactly what is gone
 		removed := []store.Key{}
-		ok := true
-		for _, o := range originals {
-			if err := os.Remove(o.Path); err != nil {
-				ok = false
-				break
+		all := true
+		for i := range change.Originals {
+			if err := os.Remove(change.Originals[i].Path); err != nil {
+				all = false
+				continue
 			}
-			removed = append(removed, store.Key{Path: o.Path})
+			change.Originals[i].Removed = true
+			change.Removed = true
+			removed = append(removed, store.Key{Path: change.Originals[i].Path})
 		}
-		if ok && a.Image == "cd" {
-			ok = os.Remove(m.From) == nil
+		if all && a.Image == "cd" {
+			change.CueRemoved = os.Remove(m.From) == nil
 		}
-		change.Removed = ok
 		st.RemoveFiles(ctx, a.LibraryID, removed)
-		if ok {
+		if all {
 			saved = before - info.Size()
 		}
 	}
@@ -293,16 +297,9 @@ func crcHex(v uint32) string {
 	return string(b)
 }
 
-// unpackCHD makes the originals again from the CHD, checks them, and removes the CHD.
+// unpackCHD makes again the originals that were removed, checks every original, and only then
+// removes the CHD.
 func unpackCHD(ctx context.Context, st *store.Store, c Change) error {
-	if !c.Removed {
-		return os.Remove(c.To)
-	}
-	for _, o := range c.Originals {
-		if exists(o.Path) {
-			return errors.New(ReasonTaken)
-		}
-	}
 	img, err := chd.Open(c.To)
 	if err != nil {
 		return err
@@ -322,7 +319,17 @@ func unpackCHD(ctx context.Context, st *store.Store, c Change) error {
 		return err
 	}
 	for _, o := range c.Originals {
-		tmp := o.Path + ".tmp"
+		if !o.Removed {
+			// kept: it must still be there as it was, or the CHD is its only copy
+			if !sameContent(o.Path, o.SHA1) {
+				return fail(errors.New("An original is no longer there as it was: the CHD is kept."))
+			}
+			continue
+		}
+		if exists(o.Path) {
+			return fail(errors.New(ReasonTaken))
+		}
+		tmp := tempName(o.Path)
 		out, err := os.OpenFile(tmp, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
 		if err != nil {
 			return fail(err)
@@ -356,10 +363,20 @@ func unpackCHD(ctx context.Context, st *store.Store, c Change) error {
 		written = append(written, o.Path)
 	}
 	if c.CueSheet != "" {
-		if err := os.WriteFile(c.From, []byte(c.CueSheet), 0o644); err != nil {
-			return fail(err)
+		if c.CueRemoved {
+			if exists(c.From) {
+				return fail(errors.New(ReasonTaken))
+			}
+			if err := os.WriteFile(c.From, []byte(c.CueSheet), 0o644); err != nil {
+				return fail(err)
+			}
+		} else if !exists(c.From) {
+			return fail(errors.New("An original is no longer there as it was: the CHD is kept."))
 		}
 	}
 	img.Close()
-	return os.Remove(c.To)
+	if err := os.Remove(c.To); err != nil {
+		return err
+	}
+	return st.RemovePath(ctx, c.To)
 }

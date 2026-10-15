@@ -11,6 +11,9 @@ Organizing the files.
 - Turn BIN/CUE dumps and ISO files of disc systems into CHD images, written by Completist itself
   (deflate, as chdman's cdzl and zlib codecs, read by every emulator), read back file by file and
   checked against the DAT before the originals are removed; undoing it writes the originals again.
+- Undoing never removes the only copy: a zip or a CHD made while keeping the originals stays
+  when the originals are gone, and what could not be undone can be tried again.
+- Damaged or crafted CHD, GCZ and CSO files can no longer make a scan use too much memory.
 - Every change is shown before it is made, runs as a task, is kept in a list and can be undone.
   Read-only libraries are left alone.
 

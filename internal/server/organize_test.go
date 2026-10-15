@@ -262,3 +262,45 @@ func TestCHDAndUndo(t *testing.T) {
 		t.Fatal("the originals are not the same")
 	}
 }
+
+// Undoing never removes the only copy: a zip or CHD made while keeping the originals stays
+// when the originals are gone.
+func TestUndoKeepsTheOnlyCopy(t *testing.T) {
+	f := newFullFixture(t)
+	a := []byte(strings.Repeat("game ", 500))
+	iso := bytes.Repeat([]byte("iso sector data!"), 2048*8/16)
+	f.do("POST", "/api/dats/import", gbDat(map[string][]byte{"Alpha (World)": a}))
+	f.do("POST", "/api/dats/import", "clrmamepro (\n\tname \"Sony - PlayStation 2\"\n)\n"+
+		"game (\n\tname \"Big Game (USA)\"\n"+romLine("Big Game (USA).iso", iso)+")\n")
+	f.write("gb/alpha.gb", a)
+	f.write("ps2/big.iso", iso)
+	f.do("POST", "/api/libraries", map[string]any{"path": f.library})
+	f.scanner.Run(context.Background(), "test")
+	for _, c := range []struct{ system, kind string }{{"gb", "zip"}, {"ps2", "chd"}} {
+		var plan planJSON
+		f.list("/api/organize?system="+c.system+"&kind="+c.kind, &plan)
+		f.do("POST", "/api/organize", map[string]any{"system": c.system, "kind": c.kind, "ids": []string{plan.Actions[0].ID}, "removeOriginals": false})
+		f.waitOrganize()
+	}
+	os.Remove(filepath.Join(f.library, "gb", "alpha.gb"))
+	os.Remove(filepath.Join(f.library, "ps2", "big.iso"))
+	var history []struct {
+		ID     int64
+		Undone bool
+	}
+	f.list("/api/organize/history", &history)
+	for _, h := range history {
+		f.do("POST", "/api/organize/history/"+strconv.FormatInt(h.ID, 10)+"/undo", nil)
+		f.waitOrganize()
+	}
+	if got := strings.Join(f.names("gb"), "|"); got != "Alpha (World).zip" {
+		t.Fatalf("gb: %s", got)
+	}
+	if got := strings.Join(f.names("ps2"), "|"); got != "Big Game (USA).chd" {
+		t.Fatalf("ps2: %s", got)
+	}
+	f.list("/api/organize/history", &history)
+	if history[0].Undone || history[1].Undone {
+		t.Fatalf("marked undone: %+v", history)
+	}
+}

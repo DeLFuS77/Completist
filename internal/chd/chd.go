@@ -130,7 +130,9 @@ func open(f *os.File) (c *File, err error) {
 		return nil, errDamaged
 	}
 	count := (c.logicalBytes + uint64(c.hunkBytes) - 1) / uint64(c.hunkBytes)
-	if count > 1<<26 {
+	// 8 million hunks: a dual-layer DVD in hunks of 2048 bytes, a CD in far fewer; more is
+	// not a disc, and the map would take too much memory
+	if count > 1<<23 || mapOffset >= uint64(c.size) || c.metaOffset >= uint64(c.size) {
 		return nil, errDamaged
 	}
 	if err := c.readMap(mapOffset, int(count)); err != nil {
@@ -156,12 +158,12 @@ func (c *File) readAt(n int, offset uint64) ([]byte, error) {
 }
 
 func (c *File) readMap(offset uint64, count int) error {
-	c.hunks = make([]mapEntry, count)
 	if c.compressors[0] == codecNone {
 		raw, err := c.readAt(4*count, offset)
 		if err != nil {
 			return err
 		}
+		c.hunks = make([]mapEntry, count)
 		for i := range c.hunks {
 			c.hunks[i] = mapEntry{kind: compNone, length: c.hunkBytes, offset: uint64(binary.BigEndian.Uint32(raw[4*i:])) * uint64(c.hunkBytes)}
 		}
@@ -182,6 +184,11 @@ func (c *File) readMap(offset uint64, count int) error {
 	if err != nil {
 		return err
 	}
+	// the map takes at least a bit for every few hunks: a tiny map for a huge disc is damaged
+	if uint64(count) > uint64(mapBytes)*8*16+1024 {
+		return errDamaged
+	}
+	c.hunks = make([]mapEntry, count)
 	br := &bitReader{data: data}
 	huff, err := readHuffman(br, 16, 8)
 	if err != nil {
@@ -213,7 +220,8 @@ func (c *File) readMap(offset uint64, count int) error {
 	// then where each one is
 	current := firstOffset
 	var lastSelf uint64
-	raw := make([]byte, 12*count)
+	mapSum := uint16(0xFFFF)
+	r := make([]byte, 12)
 	for i := range c.hunks {
 		e := &c.hunks[i]
 		var crc uint16
@@ -244,14 +252,14 @@ func (c *File) readMap(offset uint64, count int) error {
 			return ErrParent
 		}
 		e.length, e.offset = length, offset
-		r := raw[12*i:]
 		r[0] = e.kind
 		r[1], r[2], r[3] = byte(length>>16), byte(length>>8), byte(length)
 		r[4], r[5] = byte(offset>>40), byte(offset>>32)
 		binary.BigEndian.PutUint32(r[6:], uint32(offset))
 		binary.BigEndian.PutUint16(r[10:], crc)
+		mapSum = crc16Update(mapSum, r)
 	}
-	if br.overflow() || crc16(raw) != mapCRC {
+	if br.overflow() || mapSum != mapCRC {
 		return errDamaged
 	}
 	return nil
@@ -374,10 +382,14 @@ func flacBlockSize(bytes int) int {
 func (c *File) metadata(tag string) ([][]byte, error) {
 	out := [][]byte{}
 	offset := c.metaOffset
-	for seen := 0; offset != 0; seen++ {
-		if seen > 10000 {
+	visited := map[uint64]bool{}
+	total := 0
+	for offset != 0 {
+		// a list that loops, or that never ends, is damaged
+		if visited[offset] || len(visited) > 10000 {
 			return nil, errDamaged
 		}
+		visited[offset] = true
 		head, err := c.readAt(16, offset)
 		if err != nil {
 			return nil, err
@@ -385,6 +397,10 @@ func (c *File) metadata(tag string) ([][]byte, error) {
 		length := binary.BigEndian.Uint32(head[4:]) & 0xFFFFFF
 		next := binary.BigEndian.Uint64(head[8:])
 		if string(head[:4]) == tag {
+			total += int(length)
+			if total > 16<<20 {
+				return nil, errDamaged
+			}
 			data, err := c.readAt(int(length), offset+16)
 			if err != nil {
 				return nil, err
@@ -412,7 +428,10 @@ var crc16Table = func() (t [256]uint16) {
 }()
 
 func crc16(data []byte) uint16 {
-	crc := uint16(0xFFFF)
+	return crc16Update(0xFFFF, data)
+}
+
+func crc16Update(crc uint16, data []byte) uint16 {
 	for _, b := range data {
 		crc = crc<<8 ^ crc16Table[byte(crc>>8)^b]
 	}

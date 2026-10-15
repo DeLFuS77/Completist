@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"compress/flate"
 	"context"
+	"crypto/rand"
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
@@ -411,8 +412,14 @@ type Change struct {
 	// a CUE sheet: its content before
 	Sheet string `json:"sheet,omitempty"`
 	// chd: the files it was made from, and the CUE sheet that listed them
-	Originals []Original `json:"originals,omitempty"`
-	CueSheet  string     `json:"cueSheet,omitempty"`
+	Originals  []Original `json:"originals,omitempty"`
+	CueSheet   string     `json:"cueSheet,omitempty"`
+	CueRemoved bool       `json:"cueRemoved,omitempty"`
+	// the game it belongs to in the batch: when one change of a game cannot be undone, the
+	// others of that game are left as they are too
+	Group int `json:"group"`
+	// undone already, when undoing the batch stopped halfway
+	Undone bool `json:"undone,omitempty"`
 }
 
 // Batch is a change made at once.
@@ -439,12 +446,20 @@ func OpenJournal(dataFolder string) *Journal {
 	return &Journal{path: filepath.Join(dataFolder, journalFile)}
 }
 
-func (j *Journal) read() []Batch {
+func (j *Journal) read() ([]Batch, error) {
 	out := []Batch{}
-	if data, err := os.ReadFile(j.path); err == nil {
-		json.Unmarshal(data, &out)
+	data, err := os.ReadFile(j.path)
+	if errors.Is(err, os.ErrNotExist) {
+		return out, nil
 	}
-	return out
+	if err != nil {
+		return out, err
+	}
+	// a damaged journal is never written over: its changes could no longer be undone
+	if err := json.Unmarshal(data, &out); err != nil {
+		return []Batch{}, fmt.Errorf("the list of changes (%s) is damaged: %w", journalFile, err)
+	}
+	return out, nil
 }
 
 func (j *Journal) write(batches []Batch) error {
@@ -456,7 +471,19 @@ func (j *Journal) write(batches []Batch) error {
 		return err
 	}
 	tmp := j.path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o600); err != nil {
+	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(data)
+	if err == nil {
+		err = f.Sync()
+	}
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		os.Remove(tmp)
 		return err
 	}
 	return os.Rename(tmp, j.path)
@@ -466,13 +493,17 @@ func (j *Journal) write(batches []Batch) error {
 func (j *Journal) List() []Batch {
 	j.mutex.Lock()
 	defer j.mutex.Unlock()
-	return j.read()
+	batches, _ := j.read()
+	return batches
 }
 
 func (j *Journal) add(b Batch) (Batch, error) {
 	j.mutex.Lock()
 	defer j.mutex.Unlock()
-	batches := j.read()
+	batches, err := j.read()
+	if err != nil {
+		return b, err
+	}
 	b.ID = 1
 	for _, old := range batches {
 		b.ID = max(b.ID, old.ID+1)
@@ -480,13 +511,17 @@ func (j *Journal) add(b Batch) (Batch, error) {
 	return b, j.write(append([]Batch{b}, batches...))
 }
 
-func (j *Journal) markUndone(id int64) error {
+// update replaces a batch.
+func (j *Journal) update(b Batch) error {
 	j.mutex.Lock()
 	defer j.mutex.Unlock()
-	batches := j.read()
+	batches, err := j.read()
+	if err != nil {
+		return err
+	}
 	for i := range batches {
-		if batches[i].ID == id {
-			batches[i].Undone = true
+		if batches[i].ID == b.ID {
+			batches[i] = b
 		}
 	}
 	return j.write(batches)
@@ -552,6 +587,9 @@ func Apply(ctx context.Context, st *store.Store, j *Journal, plan Plan, ids []st
 			failed = append(failed, Skipped{Path: path, Game: a.Game, Reason: err.Error()})
 			continue
 		}
+		for k := range changes {
+			changes[k].Group = i
+		}
 		batch.Changes = append(batch.Changes, changes...)
 		batch.Games++
 	}
@@ -600,18 +638,21 @@ func rename(ctx context.Context, st *store.Store, a Action) ([]Change, error) {
 			undo()
 			return nil, err
 		}
-		if err := os.WriteFile(a.Sheet.To+".tmp", []byte(rewriteCue(string(old), names)), 0o644); err != nil {
+		sheetTmp := tempName(a.Sheet.To)
+		if err := os.WriteFile(sheetTmp, []byte(rewriteCue(string(old), names)), 0o644); err != nil {
+			os.Remove(sheetTmp)
 			undo()
 			return nil, err
 		}
 		if a.Sheet.To != a.Sheet.From {
 			if err := os.Remove(a.Sheet.From); err != nil {
-				os.Remove(a.Sheet.To + ".tmp")
+				os.Remove(sheetTmp)
 				undo()
 				return nil, err
 			}
 		}
-		if err := os.Rename(a.Sheet.To+".tmp", a.Sheet.To); err != nil {
+		if err := os.Rename(sheetTmp, a.Sheet.To); err != nil {
+			os.Remove(sheetTmp)
 			os.WriteFile(a.Sheet.From, old, 0o644)
 			undo()
 			return nil, err
@@ -621,6 +662,13 @@ func rename(ctx context.Context, st *store.Store, a Action) ([]Change, error) {
 	return changes, nil
 }
 
+// tempName is a name for a file being written next to path, which no other file has.
+func tempName(path string) string {
+	b := make([]byte, 6)
+	rand.Read(b)
+	return filepath.Join(filepath.Dir(path), ".completist-"+hex.EncodeToString(b)+".tmp")
+}
+
 // move renames a file, without replacing another one.
 func move(from, to string) error {
 	if exists(to) && !sameFile(from, to) {
@@ -628,7 +676,7 @@ func move(from, to string) error {
 	}
 	if strings.EqualFold(from, to) && from != to {
 		// only the case changes: through another name, for systems that ignore case
-		tmp := to + ".renaming"
+		tmp := tempName(to)
 		if err := os.Rename(from, tmp); err != nil {
 			return err
 		}
@@ -648,7 +696,7 @@ func pack(a Action, removeOriginal bool) ([]Change, int64, error) {
 	if exists(m.To) {
 		return nil, 0, errors.New(ReasonTaken)
 	}
-	tmp := m.To + ".tmp"
+	tmp := tempName(m.To)
 	if err := writeZip(m.From, tmp, a.Entry, info.ModTime()); err != nil {
 		os.Remove(tmp)
 		return nil, 0, err
@@ -743,8 +791,9 @@ func checkZip(path, entry, wantSHA1, wantCRC string, size int64) error {
 
 // ---- undoing ----
 
-// Undo reverses a batch, newest change first. Changes that cannot be undone are reported and
-// the rest still are.
+// Undo reverses a batch, newest change first. A change that cannot be undone is reported, the
+// other changes of its game are left as they are, and the rest are undone; undoing again later
+// retries what was left.
 func Undo(ctx context.Context, st *store.Store, j *Journal, id int64) ([]Skipped, error) {
 	b, ok := j.Get(id)
 	if !ok {
@@ -754,37 +803,76 @@ func Undo(ctx context.Context, st *store.Store, j *Journal, id int64) ([]Skipped
 		return nil, errors.New("This change was undone already.")
 	}
 	failed := []Skipped{}
+	blocked := map[int]bool{}
 	for i := len(b.Changes) - 1; i >= 0; i-- {
-		c := b.Changes[i]
+		c := &b.Changes[i]
+		if c.Undone {
+			continue
+		}
+		if blocked[c.Group] {
+			failed = append(failed, Skipped{Path: c.To, Reason: "Left as it is: another file of the game could not be undone."})
+			continue
+		}
 		var err error
 		switch {
 		case b.Kind == KindCHD:
-			err = unpackCHD(ctx, st, c)
+			err = unpackCHD(ctx, st, *c)
 		case c.Sheet != "":
-			if exists(c.From) && c.From != c.To {
-				err = errors.New(ReasonTaken)
-				break
-			}
-			if err = os.WriteFile(c.From, []byte(c.Sheet), 0o644); err == nil && c.To != c.From {
-				os.Remove(c.To)
-			}
+			err = restoreSheet(*c)
 		case b.Kind == KindZip:
-			err = unpack(c)
+			err = unpack(*c)
 		default:
 			if err = move(c.To, c.From); err == nil {
 				err = st.MovePath(ctx, c.To, c.From)
 			}
 		}
 		if err != nil {
+			blocked[c.Group] = true
 			failed = append(failed, Skipped{Path: c.To, Reason: err.Error()})
+			continue
+		}
+		c.Undone = true
+	}
+	b.Undone = len(failed) == 0
+	return failed, j.update(b)
+}
+
+// restoreSheet writes a CUE sheet back as it was, under its old name.
+func restoreSheet(c Change) error {
+	if c.To != c.From && exists(c.From) && !sameFile(c.From, c.To) {
+		return errors.New(ReasonTaken)
+	}
+	tmp := tempName(c.From)
+	if err := os.WriteFile(tmp, []byte(c.Sheet), 0o644); err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	if c.To != c.From {
+		if err := os.Remove(c.To); err != nil && !errors.Is(err, os.ErrNotExist) {
+			os.Remove(tmp)
+			return err
 		}
 	}
-	return failed, j.markUndone(id)
+	if err := os.Rename(tmp, c.From); err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	return nil
+}
+
+// sameContent reports whether a file is still the one with this SHA-1.
+func sameContent(path, sum string) bool {
+	got, _, err := fileSHA1(path)
+	return err == nil && got == sum
 }
 
 // unpack puts back an original removed after packing, checked, and removes the zip.
 func unpack(c Change) error {
 	if !c.Removed {
+		// the zip goes only while the original is still there, as it was
+		if c.SHA1 == "" || !sameContent(c.From, c.SHA1) {
+			return errors.New("The original is no longer there as it was: the zip is kept.")
+		}
 		return os.Remove(c.To)
 	}
 	if exists(c.From) {
@@ -809,7 +897,7 @@ func unpack(c Change) error {
 		z.Close()
 		return err
 	}
-	tmp := c.From + ".tmp"
+	tmp := tempName(c.From)
 	out, err := os.OpenFile(tmp, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
 	if err != nil {
 		r.Close()

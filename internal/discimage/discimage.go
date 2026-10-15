@@ -74,6 +74,16 @@ func openGCZ(path string) (Image, error) {
 	g.dataSize = int64(binary.LittleEndian.Uint64(h[16:]))
 	g.blockSize = int64(binary.LittleEndian.Uint32(h[24:]))
 	blocks := int64(binary.LittleEndian.Uint32(h[28:]))
+	info, err := f.Stat()
+	if err != nil {
+		f.Close()
+		return nil, err
+	}
+	// the table of the blocks must fit in the file
+	if 32+12*blocks > info.Size() {
+		f.Close()
+		return nil, errDamaged
+	}
 	if g.blockSize <= 0 || g.blockSize > 64<<20 || blocks <= 0 || blocks > 1<<24 || (blocks-1)*g.blockSize >= g.dataSize+g.blockSize {
 		f.Close()
 		return nil, errDamaged
@@ -175,7 +185,12 @@ func openCSO(path string) (Image, error) {
 		return nil, errDamaged
 	}
 	blocks := (c.size + c.blockSize - 1) / c.blockSize
-	if blocks > 1<<24 {
+	info, err := f.Stat()
+	if err != nil {
+		f.Close()
+		return nil, err
+	}
+	if blocks > 1<<24 || 24+4*(blocks+1) > info.Size() {
 		f.Close()
 		return nil, errDamaged
 	}

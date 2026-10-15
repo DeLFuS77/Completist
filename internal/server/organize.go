@@ -160,7 +160,9 @@ func (s *Server) runUndo(b organize.Batch, user string) {
 func (s *Server) afterOrganize(kind string) {
 	s.Store.Rematch(context.Background())
 	s.changed()
-	if kind == organize.KindZip {
+	// packed and unpacked files are read: a zip is small; a CHD made here is known already, and
+	// the originals put back by undoing it are read again
+	if kind == organize.KindZip || kind == organize.KindCHD {
 		s.Scanner.Start(tasks.TriggerSettings)
 	}
 }

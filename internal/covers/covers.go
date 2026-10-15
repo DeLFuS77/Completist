@@ -296,6 +296,10 @@ func shrink(data []byte, mode string) ([]byte, bool) {
 	if q == 0 {
 		return nil, false
 	}
+	// a header that claims a huge image would take more memory than the server has
+	if cfg, err := png.DecodeConfig(bytes.NewReader(data)); err != nil || cfg.Width*cfg.Height > 4096*4096 {
+		return nil, false
+	}
 	img, err := png.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, false

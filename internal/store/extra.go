@@ -201,3 +201,9 @@ func (s *Store) MovePath(ctx context.Context, from, to string) error {
 	_, err := s.db.ExecContext(ctx, `UPDATE files SET path = ?, stem = CASE WHEN entry = '' THEN ? ELSE stem END WHERE path = ?`, to, Stem(to), from)
 	return err
 }
+
+// RemovePath forgets a file and the entries in it.
+func (s *Store) RemovePath(ctx context.Context, path string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM files WHERE path = ?`, path)
+	return err
+}

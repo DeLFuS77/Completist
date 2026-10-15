@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -426,5 +427,56 @@ func TestCueOneFile(t *testing.T) {
 	}
 	if tracks[0].Frames != 225 || tracks[1].Offset != 225*2352 || tracks[1].Frames != 175 || tracks[1].Pregap != 150 {
 		t.Fatalf("%+v", tracks)
+	}
+}
+
+// Header fields of a crafted file must not make the reader allocate much.
+func TestCraftedHeaders(t *testing.T) {
+	dir := t.TempDir()
+	header := func(logical uint64, hunk uint32, mapOffset, metaOffset uint64) []byte {
+		h := make([]byte, headerSize+64)
+		copy(h, "MComprHD")
+		binary.BigEndian.PutUint32(h[8:], headerSize)
+		binary.BigEndian.PutUint32(h[12:], 5)
+		binary.BigEndian.PutUint32(h[16:], codecZlib)
+		binary.BigEndian.PutUint64(h[32:], logical)
+		binary.BigEndian.PutUint64(h[40:], mapOffset)
+		binary.BigEndian.PutUint64(h[48:], metaOffset)
+		binary.BigEndian.PutUint32(h[56:], hunk)
+		binary.BigEndian.PutUint32(h[60:], hunk)
+		return h
+	}
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
+	for i, h := range [][]byte{
+		header(1<<26, 1, headerSize, 0),
+		header(1<<40, 4096, headerSize, 0),
+		header(4096*100, 4096, 1<<40, 0),
+	} {
+		path := filepath.Join(dir, fmt.Sprintf("%d.chd", i))
+		os.WriteFile(path, h, 0o644)
+		if c, err := Open(path); err == nil {
+			c.Close()
+			t.Fatalf("%d: opened", i)
+		}
+	}
+	runtime.ReadMemStats(&after)
+	if grown := after.TotalAlloc - before.TotalAlloc; grown > 64<<20 {
+		t.Fatalf("allocated %d MB", grown>>20)
+	}
+
+	// metadata that points to itself
+	data, _ := os.ReadFile("testdata/disc-default.chd")
+	meta := binary.BigEndian.Uint64(data[48:])
+	binary.BigEndian.PutUint64(data[meta+8:], meta)
+	path := filepath.Join(dir, "loop.chd")
+	os.WriteFile(path, data, 0o644)
+	c, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	if _, err := c.Tracks(); err == nil {
+		t.Fatal("a metadata loop was read")
 	}
 }
