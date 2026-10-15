@@ -424,6 +424,11 @@ func (s *Server) routes(mux *http.ServeMux) {
 		}
 		info, err := os.Stat(body.Path)
 		if err != nil || !info.IsDir() {
+			if os.Getenv("COMPLETIST_IN_DOCKER") != "" && windowsPath(body.Path) {
+				// a path of the computer, not of the container
+				writeError(w, http.StatusBadRequest, "Completist runs in Docker and sees only the folders given to the container, such as /roms. Give the Windows folder to the container (the -v option of docker run) and choose it here.")
+				return
+			}
 			writeError(w, http.StatusBadRequest, "The folder does not exist or cannot be opened.")
 			return
 		}
@@ -761,4 +766,9 @@ func (s *Server) ui() http.Handler {
 		w.Header().Set("Cache-Control", "no-cache")
 		io.Copy(w, f)
 	})
+}
+
+// windowsPath reports whether a path is written the Windows way, as C:\Roms or \\nas\roms.
+func windowsPath(p string) bool {
+	return len(p) >= 2 && p[1] == ':' && (p[0]|0x20 >= 'a' && p[0]|0x20 <= 'z') || strings.HasPrefix(p, `\\`)
 }

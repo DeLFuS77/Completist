@@ -314,6 +314,7 @@ export const es: Record<string, string> = {
 	'Changed the password of a user': 'Cambió la contraseña de un usuario',
 	'Deleted a user': 'Eliminó un usuario',
 	'Removed the stored images': 'Borró las imágenes guardadas',
+	'Completist runs in Docker and sees only the folders given to the container, such as /roms. Give the Windows folder to the container (the -v option of docker run) and choose it here.': 'Completist funciona en Docker y solo ve las carpetas que se le dan al contenedor, como /roms. Dale la carpeta de Windows al contenedor (la opción -v de docker run) y elígela aquí.',
 	'Theme': 'Tema',
 	'Kept on this device.': 'Se guarda en este dispositivo.',
 	'As the system': 'Como el sistema',
