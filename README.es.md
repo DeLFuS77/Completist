@@ -29,7 +29,7 @@ NAS, tu servidor Unraid o tu ordenador, como un solo programa pequeño con su ba
 - **Mantiene los DAT al día**: los descarga de libretro-database y los actualiza cada semana, o
   importa tus propios DAT (Logiqx XML o clrmamepro).
 - **Se ve bien**: portadas, capturas, una página por juego con sus versiones y regiones, una
-  interfaz oscura que funciona en el móvil, en español e inglés. Cada imagen se descarga una vez y
+  interfaz oscura o clara que funciona en el móvil, en español e inglés. Cada imagen se descarga una vez y
   se guarda, así que las páginas cargan al momento, también sin internet; las portadas se pueden
   guardar como JPEG de alta calidad, en una cuarta parte del espacio.
 - **Se actualiza solo**: detecta cuando se añaden, quitan o cambian archivos y vuelve a escanear;
@@ -42,9 +42,15 @@ NAS, tu servidor Unraid o tu ordenador, como un solo programa pequeño con su ba
 - **Exporta** a listas de RetroArch y gamelists de ES-DE, con los nombres de los DAT, para que
   también ahí salgan las portadas.
 - **Ordena tus archivos**: les pone los nombres de los DAT (también a las pistas de un disco y a
-  su CUE), mete los volcados de cartucho en zip y pasa las imágenes BIN/CUE e ISO de disco a CHD,
-  sin chdman; cada archivo nuevo se vuelve a leer y se comprueba contra el DAT antes de borrar su
-  original. Ves cada cambio antes de hacerlo y todo se puede deshacer.
+  su CUE), mete los volcados de cartucho en zip, pasa las imágenes BIN/CUE e ISO de disco a CHD
+  sin chdman y comprime los ISO de PSP en CSO y los de GameCube y Wii en GCZ; cada archivo nuevo se
+  vuelve a leer y se comprueba contra el DAT antes de borrar su original. Ves cada cambio antes de
+  hacerlo y todo se puede deshacer.
+- **Muestra dónde se va el espacio**: lo que ocupa cada sistema por formato, el espacio en
+  duplicados y en archivos que no están en los DAT, y lo que se podría comprimir, con un enlace
+  para hacerlo.
+- **Un fixdat de lo que falta** en cada sistema, en el modo de recuento que elegiste, para buscar
+  esos juegos con cualquier gestor de ROM.
 - **Te avisa** por Discord, Telegram o cualquier webhook: juegos nuevos en tu colección, sets que
   completas, archivos dañados y entradas nuevas en los DAT.
 - **Guarda una copia** de las bibliotecas, los DAT, los ajustes y los usuarios cada semana, y
@@ -80,6 +86,13 @@ externas:
 | RVZ, WIA, WBFS | GameCube, Wii | Por el código de juego de la cabecera: quitan datos, así que no se pueden comprobar |
 
 Un juego de varios discos cuenta una vez, cuando los tienes todos.
+
+Lo que escribe Completist al comprimir, siempre sin pérdida: CHD para los sistemas de CD, PS2 y
+PSP (lo leen RetroArch, DuckStation, PCSX2, PPSSPP, Flycast y otros); CSO para PSP; GCZ para
+GameCube y Wii, que lee Dolphin. No escribe RVZ: hace falta un codificador Zstandard y, para los
+discos de Wii, las claves de la consola para descifrarlos, que Completist no incluye. Dolphin pasa
+un GCZ a RVZ en un par de clics si quieres el archivo más pequeño; Completist lo sigue
+reconociendo después.
 
 ## Empezar
 
@@ -179,8 +192,8 @@ en el [README en inglés](README.md#api).
 
 1. **Hecho**: el núcleo, los sistemas de cartucho, los DAT, los modos de recuento, la nueva
    interfaz, las portadas guardadas por el servidor, las estadísticas, la lista de deseos, la
-   exportación a ES-DE y RetroArch, los sistemas de disco, y el renombrado y la compresión con
-   deshacer, también a CHD.
+   exportación a ES-DE y RetroArch, los sistemas de disco, el renombrado y la compresión con
+   deshacer (zip, CHD, CSO y GCZ), la página de espacio, los fixdat y el tema claro.
 2. Lo siguiente: se aceptan ideas en las issues.
 
 ## Compilar

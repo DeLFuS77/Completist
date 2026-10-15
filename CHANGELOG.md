@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.6.0 (unreleased)
+
+Space, fixdats and a light theme.
+
+- Compress PSP ISO files into CSO, and GameCube and Wii ISO files into GCZ (the lossless format of
+  Dolphin), from the Organize page. Blocks are compressed on every core; each image is read back
+  whole and compared with the ISO before the ISO is removed, and the change can be undone.
+- GCZ and CSO files are no longer read again on every scan.
+- A Space page: what each system takes on the disk by format, the space in duplicates, in files
+  not in the DATs and in damaged files, and what could be compressed, with a link to do it.
+- A fixdat of the missing games of each system, in its counting mode, as a Logiqx DAT.
+- A light theme. It follows the system, or a choice kept on the device in Settings > Account.
+- RVZ is not written: it needs a Zstandard encoder and the Wii keys. GCZ is offered instead,
+  and Dolphin converts it to RVZ if wanted.
+
 ## 0.5.0 (unreleased)
 
 Organizing the files.

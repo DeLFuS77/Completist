@@ -28,7 +28,7 @@ Unraid server or your computer, as one small program with its database inside.
 - **Keeps the DATs up to date**: downloaded from libretro-database and updated every week, or
   imported from your own DAT files (Logiqx XML or clrmamepro).
 - **Looks good**: box art, screenshots, a page for each game with its versions and regions, a
-  dark interface that works on a phone, in English and Spanish. Each image is downloaded once and
+  dark or light interface that works on a phone, in English and Spanish. Each image is downloaded once and
   kept, so pages load at once, also without internet; box art can be kept as a JPEG of high
   quality, in a quarter of the space.
 - **Stays up to date**: Completist notices when files are added, removed or replaced and scans
@@ -41,9 +41,14 @@ Unraid server or your computer, as one small program with its database inside.
 - **Exports** to RetroArch playlists and ES-DE gamelists, with the DAT names, so their box art
   shows too.
 - **Organizes your files**: renames them to the names of the DATs (the tracks of a disc and its
-  CUE sheet too), packs cartridge dumps in zip files and turns BIN/CUE and ISO images of discs into
-  CHD, without chdman; each new file is read back and checked against the DAT before its original
-  is removed. You see every change before it is made, and every change can be undone.
+  CUE sheet too), packs cartridge dumps in zip files, turns BIN/CUE and ISO images of discs into
+  CHD without chdman, and compresses PSP ISO files into CSO and GameCube and Wii ISO files into
+  GCZ; each new file is read back and checked against the DAT before its original is removed. You
+  see every change before it is made, and every change can be undone.
+- **Shows where the space goes**: what each system takes by format, the space in duplicates and
+  in files not in the DATs, and what could be compressed, with a link to do it.
+- **A fixdat of what is missing** for each system, in the counting mode you chose, to look for
+  those games with any ROM manager.
 - **Tells you the news** through Discord, Telegram or any webhook: games new in your collection,
   sets you complete, damaged files found and new entries in the DATs.
 - **Keeps a backup** of the libraries, DATs, settings and users every week, and keeps the last five;
@@ -77,6 +82,12 @@ GameCube and Wii. Completist reads the usual formats itself, with no external to
 | RVZ, WIA, WBFS | GameCube, Wii | By the game code in the disc header: these leave out data, so they cannot be checked |
 
 A game on several discs counts once, when you have all of them.
+
+What Completist writes when it compresses, all with no loss: CHD for the CD systems, PS2 and PSP
+(read by RetroArch, DuckStation, PCSX2, PPSSPP, Flycast and others); CSO for PSP; GCZ for GameCube
+and Wii, which Dolphin reads. It does not write RVZ: that needs a Zstandard encoder and, for Wii
+discs, the console's keys to decrypt them, which Completist does not ship. Dolphin turns a GCZ
+into RVZ in a few clicks if you want the smaller file; Completist still recognises it afterwards.
 
 ## Quick start
 
@@ -181,7 +192,9 @@ is required (a read-only user is enough to read).
 | `GET /api/stats` | The statistics, with the history day by day |
 | `GET /api/wishlist` | The wishlist; `PUT` or `DELETE /api/wishlist/{system}/{name}` changes it |
 | `GET /api/export/retroarch?from=&to=`, `GET /api/export/esde` | The exports, as zip files |
-| `GET /api/organize?system=snes&kind=rename\|zip` | What renaming or packing would do; `POST` does it, `GET /api/organize/history` lists the changes and `POST /api/organize/history/{id}/undo` undoes one |
+| `GET /api/organize?system=snes&kind=rename\|zip\|chd\|cso\|gcz` | What renaming, packing or compressing would do; `POST` does it, `GET /api/organize/history` lists the changes and `POST /api/organize/history/{id}/undo` undoes one |
+| `GET /api/systems/{id}/fixdat` | A Logiqx DAT of the games missing in a system |
+| `GET /api/space` | The space each system takes, by format, with duplicates and what can be compressed |
 | `GET /api/covers/{system}/{boxart\|snap\|title}/{name}.png` | An image of a game, by its name in the DAT |
 | `POST /api/scan` | Scan the libraries |
 | `POST /api/dats/sync` | Download the DATs |
@@ -192,7 +205,7 @@ is required (a read-only user is enough to read).
 
 1. **Done**: the core, cartridge systems, DATs, counting modes, the new interface, covers kept by
    the server, statistics, a wishlist, exports to ES-DE and RetroArch, the disc systems, and
-   renaming, zip and CHD with undo.
+   renaming, zip, CHD, CSO and GCZ with undo, the Space page, fixdats and a light theme.
 2. Next: ideas welcome in the issues.
 
 ## Building
