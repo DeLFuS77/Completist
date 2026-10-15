@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { del, type Task } from '../lib/api';
 	import { live, session } from '../lib/state.svelte';
-	import { t, n, date, relative } from '../lib/i18n.svelte';
+	import { t, n, date, relative, taskMessage } from '../lib/i18n.svelte';
 	import Bar from '../components/Bar.svelte';
 	import Icon from '../components/Icon.svelte';
 
@@ -70,12 +70,12 @@
 						{#if task.total > 0}
 							<Bar value={task.current} total={task.total} color="var(--color-gold)" label={t(kindName[task.kind] ?? task.kind)} />
 							<div class="mt-2 flex justify-between gap-4 text-sm text-mute">
-								<span class="truncate">{t(task.message)}</span>
+								<span class="truncate">{taskMessage(task.message)}</span>
 								<span class="t-num shrink-0">{n(task.current)} / {n(task.total)}</span>
 							</div>
 						{:else}
 							<div class="h-2 overflow-hidden rounded-full bg-line/70"><div class="indeterminate h-full w-1/3 rounded-full bg-gold"></div></div>
-							<div class="mt-2 truncate text-sm text-mute">{t(task.message)}</div>
+							<div class="mt-2 truncate text-sm text-mute">{taskMessage(task.message)}</div>
 						{/if}
 					</div>
 				{:else if result(task)}

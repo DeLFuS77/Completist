@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { router } from './lib/router.svelte';
 	import { session, collection, live, loadSession, refreshCollection, connectTasks, running } from './lib/state.svelte';
-	import { t, n, locale } from './lib/i18n.svelte';
+	import { t, n, locale, taskMessage } from './lib/i18n.svelte';
 	import { systemColor } from './lib/systems';
 	import Icon from './components/Icon.svelte';
 	import Home from './pages/Home.svelte';
@@ -102,7 +102,7 @@
 			{#if active.length}
 				<div class="border-t border-line/60 px-5 py-4 text-sm">
 					<div class="truncate text-ink">{t(active[0].kind === 'scan' ? 'Scanning the libraries' : active[0].kind === 'organize' ? 'Organizing files' : 'Downloading DATs')}</div>
-					<div class="mt-1 truncate text-xs text-mute">{t(active[0].message)}</div>
+					<div class="mt-1 truncate text-xs text-mute">{taskMessage(active[0].message)}</div>
 					{#if active[0].total > 0}
 						<div class="mt-2 h-1 overflow-hidden rounded-full bg-line"><div class="h-full rounded-full bg-gold transition-[width]" style="width: {(active[0].current / active[0].total) * 100}%"></div></div>
 					{/if}

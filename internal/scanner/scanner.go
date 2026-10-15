@@ -150,6 +150,9 @@ func (sc *Scanner) scanLibrary(ctx context.Context, taskID int64, lib store.Libr
 	seen := map[store.Key]bool{}
 	todo := []candidate{}
 	discSheets := &sheets{}
+	archives := []archive{}
+	found := 0
+	reported := time.Now()
 	walkErr := filepath.WalkDir(lib.Path, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			sc.tasks.Warn(taskID, tasks.NoteUnreadable, err.Error())
@@ -170,40 +173,15 @@ func (sc *Scanner) scanLibrary(ctx context.Context, taskID int64, lib store.Libr
 		}
 		mtime := info.ModTime().Unix()
 		system, _ := systems.Detect(lib.Path, path)
-		if strings.EqualFold(filepath.Ext(path), ".zip") {
-			// a zip that changed is read again; its entries come from the archive itself
-			key := store.Key{Path: path}
-			entries, err := zipEntries(path, system)
-			if err != nil {
-				sc.tasks.Warn(taskID, tasks.NoteUnreadable, fmt.Sprintf("%s: %v", path, err))
-				return nil
-			}
-			for _, e := range entries {
-				key.Entry = e.name
-				seen[key] = true
-				if c, ok := known[key]; ok && c.Ok && c.Size == int64(e.size) && c.Mtime == mtime {
-					continue
-				}
-				todo = append(todo, candidate{library: lib, path: path, entry: e.name, size: int64(e.size), mtime: mtime, system: e.system})
-			}
-			return nil
+		found++
+		if time.Since(reported) > time.Second {
+			reported = time.Now()
+			sc.tasks.Progress(taskID, -1, -1, fmt.Sprintf("Looking for files in %s: %d found", lib.Name, found))
 		}
-		if strings.EqualFold(filepath.Ext(path), ".chd") {
-			// a disc image: its data track is read like an entry of an archive
-			key := store.Key{Path: path}
-			entries, err := chdEntries(path)
-			if err != nil {
-				sc.tasks.Warn(taskID, tasks.NoteUnreadable, fmt.Sprintf("%s: %v", path, err))
-				return nil
-			}
-			for _, e := range entries {
-				key.Entry = e.name
-				seen[key] = true
-				if c, ok := known[key]; ok && c.Ok && c.Size == int64(e.size) && c.Mtime == mtime {
-					continue
-				}
-				todo = append(todo, candidate{library: lib, path: path, entry: e.name, size: int64(e.size), mtime: mtime, system: system})
-			}
+		if strings.EqualFold(filepath.Ext(path), ".zip") || strings.EqualFold(filepath.Ext(path), ".chd") {
+			// a zip or a CHD: its entries come from the archive itself, read below, several
+			// at a time, as a network share or a Docker volume answers slowly
+			archives = append(archives, archive{path: path, mtime: mtime, system: system})
 			return nil
 		}
 		if !systems.IsGameFile(path) && !(system != nil && strings.EqualFold(filepath.Ext(path), ".bin")) {
@@ -230,6 +208,24 @@ func (sc *Scanner) scanLibrary(ctx context.Context, taskID int64, lib store.Libr
 	})
 	if walkErr != nil {
 		return 0, 0, walkErr
+	}
+	sc.listArchives(ctx, taskID, lib, archives, func(a archive, entries []zipEntry, err error) {
+		if err != nil {
+			sc.tasks.Warn(taskID, tasks.NoteUnreadable, fmt.Sprintf("%s: %v", a.path, err))
+			return
+		}
+		key := store.Key{Path: a.path}
+		for _, e := range entries {
+			key.Entry = e.name
+			seen[key] = true
+			if c, ok := known[key]; ok && c.Ok && c.Size == int64(e.size) && c.Mtime == a.mtime {
+				continue
+			}
+			todo = append(todo, candidate{library: lib, path: a.path, entry: e.name, size: int64(e.size), mtime: a.mtime, system: e.system})
+		}
+	})
+	if ctx.Err() != nil {
+		return len(seen), 0, ctx.Err()
 	}
 
 	gone := []store.Key{}
@@ -613,4 +609,66 @@ func hashStream(plugin platform.Plugin, system *systems.System, source interface
 	hashes, err := plugin.Hash(system, pr, source.Size())
 	pr.CloseWithError(io.ErrClosedPipe)
 	return hashes, err
+}
+
+// archive is a zip or a CHD found by a scan, whose entries are listed after the walk.
+type archive struct {
+	path   string
+	mtime  int64
+	system *systems.System
+}
+
+// listArchives lists the entries of the archives with several readers at once, and hands them
+// over one at a time, in order.
+func (sc *Scanner) listArchives(ctx context.Context, taskID int64, lib store.Library, archives []archive, use func(archive, []zipEntry, error)) {
+	type result struct {
+		entries []zipEntry
+		err     error
+		done    chan struct{}
+	}
+	results := make([]result, len(archives))
+	for i := range results {
+		results[i].done = make(chan struct{})
+	}
+	next := make(chan int)
+	go func() {
+		defer close(next)
+		for i := range archives {
+			select {
+			case next <- i:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	for range max(8, sc.workers*2) {
+		go func() {
+			for i := range next {
+				a := archives[i]
+				if strings.EqualFold(filepath.Ext(a.path), ".chd") {
+					results[i].entries, results[i].err = chdEntries(a.path)
+					// a disc image: its data track is read like an entry of an archive
+					for k := range results[i].entries {
+						results[i].entries[k].system = a.system
+					}
+				} else {
+					results[i].entries, results[i].err = zipEntries(a.path, a.system)
+				}
+				close(results[i].done)
+			}
+		}()
+	}
+	reported := time.Now()
+	for i := range archives {
+		select {
+		case <-results[i].done:
+		case <-ctx.Done():
+			return
+		}
+		use(archives[i], results[i].entries, results[i].err)
+		if time.Since(reported) > time.Second {
+			reported = time.Now()
+			sc.tasks.Progress(taskID, i+1, len(archives), "Reading the archives in "+lib.Name)
+		}
+	}
 }

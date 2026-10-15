@@ -42,6 +42,22 @@ export function t(text: string, values?: Record<string, string | number>): strin
 	return out;
 }
 
+// messages of tasks with a part that changes, such as the name of a library
+const patterns: [RegExp, string, string[]][] = [
+	[/^Looking for files in (.+): (\d+) found$/, 'Looking for files in {lib}: {n} found', ['lib', 'n']],
+	[/^Looking for files in (.+)$/, 'Looking for files in {lib}', ['lib']],
+	[/^Reading the archives in (.+)$/, 'Reading the archives in {lib}', ['lib']]
+];
+
+/** the message of a task, translated */
+export function taskMessage(text: string): string {
+	for (const [re, key, names] of patterns) {
+		const m = re.exec(text);
+		if (m) return t(key, Object.fromEntries(names.map((name, i) => [name, name === 'n' ? n(Number(m[i + 1])) : m[i + 1]])));
+	}
+	return t(text);
+}
+
 /** a number in the language of the interface */
 export function n(value: number, digits = 0): string {
 	return new Intl.NumberFormat(locale.code, { maximumFractionDigits: digits, minimumFractionDigits: digits }).format(value);
