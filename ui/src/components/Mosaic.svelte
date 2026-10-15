@@ -2,6 +2,7 @@
 	// One tile per game to collect, every system in a row: the ones you have lit in the colour of
 	// their system, the missing ones dim. On first show the owned tiles light up in one sweep.
 	import type { MosaicRow } from '../lib/api';
+	import { theme } from '../lib/theme.svelte';
 	import { systemColor } from '../lib/systems';
 	import { t, n } from '../lib/i18n.svelte';
 
@@ -72,7 +73,8 @@
 				ctx.fillStyle = systemColor(tile.system);
 				last = tile.system;
 			}
-			ctx.globalAlpha = on ? 1 : 0.2;
+			// on white a faint tile vanishes: missing ones are a little stronger there
+			ctx.globalAlpha = on ? 1 : theme.light ? 0.32 : 0.2;
 			const r = size >= 6 ? 1.5 : 0;
 			if (r) {
 				ctx.beginPath();

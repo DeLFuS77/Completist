@@ -3,6 +3,13 @@
 	import { session, loadSession } from '../../lib/state.svelte';
 	import { t, languages, locale, setLanguage } from '../../lib/i18n.svelte';
 	import Icon from '../../components/Icon.svelte';
+	import { theme, setTheme, type Theme } from '../../lib/theme.svelte';
+
+	const themes: { value: Theme; label: string }[] = [
+		{ value: 'auto', label: 'As the system' },
+		{ value: 'dark', label: 'Dark' },
+		{ value: 'light', label: 'Light' }
+	];
 
 	let current = $state('');
 	let password = $state('');
@@ -35,6 +42,16 @@
 	<div class="mt-4 flex gap-2" role="group" aria-label={t('Language')}>
 		{#each languages as l}
 			<button class="chip" aria-pressed={locale.code === l.code} onclick={() => changeLanguage(l.code)}>{l.name}</button>
+		{/each}
+	</div>
+</section>
+
+<section class="mt-10">
+	<h3 class="t-section">{t('Theme')}</h3>
+	<p class="mt-1 text-sm text-mute">{t('Kept on this device.')}</p>
+	<div class="mt-4 flex flex-wrap gap-2" role="group" aria-label={t('Theme')}>
+		{#each themes as th}
+			<button class="chip" aria-pressed={theme.value === th.value} onclick={() => setTheme(th.value)}>{t(th.label)}</button>
 		{/each}
 	</div>
 </section>

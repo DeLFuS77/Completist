@@ -38,6 +38,46 @@
 	--ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* the light room: the same colours by day. It follows the system unless a choice was made
+   in the settings (data-theme on the root). Gold and the states are darker, so text in them
+   reads on white. */
+@layer base {
+	:root[data-theme='light'] {
+		--color-night: #f3f4f9;
+		--color-deep: #ffffff;
+		--color-panel: #ffffff;
+		--color-raised: #e9ecf4;
+		--color-line: #d6dbe8;
+		--color-ink: #141a2e;
+		--color-mute: #556080;
+		--color-faint: #8a93ae;
+		--color-gold: #b37406;
+		--color-gold-deep: #8c5a03;
+		--color-good: #17864d;
+		--color-warn: #b8560f;
+		--color-bad: #c9283b;
+		color-scheme: light;
+	}
+	@media (prefers-color-scheme: light) {
+		:root:not([data-theme='dark']) {
+			--color-night: #f3f4f9;
+			--color-deep: #ffffff;
+			--color-panel: #ffffff;
+			--color-raised: #e9ecf4;
+			--color-line: #d6dbe8;
+			--color-ink: #141a2e;
+			--color-mute: #556080;
+			--color-faint: #8a93ae;
+			--color-gold: #b37406;
+			--color-gold-deep: #8c5a03;
+			--color-good: #17864d;
+			--color-warn: #b8560f;
+			--color-bad: #c9283b;
+			color-scheme: light;
+		}
+	}
+}
+
 @layer base {
 	html {
 		color-scheme: dark;
@@ -115,8 +155,16 @@
 		background: var(--color-gold);
 		color: #1d1405;
 	}
+	:root[data-theme='light'] .btn-primary {
+		color: #fff;
+	}
+	@media (prefers-color-scheme: light) {
+		:root:not([data-theme='dark']) .btn-primary {
+			color: #fff;
+		}
+	}
 	.btn-primary:hover:not(:disabled) {
-		background: #ffc75e;
+		background: color-mix(in oklab, var(--color-gold) 82%, white);
 	}
 	.btn-quiet {
 		background: var(--color-raised);

@@ -1,3 +1,4 @@
+import './lib/theme.svelte';
 import { mount } from 'svelte';
 import App from './App.svelte';
 import { startRouter } from './lib/router.svelte';

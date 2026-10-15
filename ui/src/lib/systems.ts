@@ -1,3 +1,5 @@
+import { theme } from './theme.svelte';
+
 // The colour of each system, taken from the hardware or its logo. It tints its cards, its
 // generated covers and its band of the mosaic.
 
@@ -38,8 +40,16 @@ const colors: Record<string, string> = {
 	psp: '#a5d8ff'
 };
 
+// the colours too pale to see on the light theme, made darker there
+const onLight: Record<string, string> = {
+	wii: '#8e9ab0',
+	psp: '#4a9fe0',
+	sg1000: '#8d96a3',
+	colecovision: '#868e96'
+};
+
 export function systemColor(id: string): string {
-	return colors[id] ?? '#8c96b5';
+	return (theme.light && onLight[id]) || colors[id] || '#8c96b5';
 }
 
 /** the colour mixed into the background, for large surfaces */
