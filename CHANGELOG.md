@@ -15,6 +15,25 @@ Space, fixdats and a light theme.
 - RVZ is not written: it needs a Zstandard encoder and the Wii keys. GCZ is offered instead,
   and Dolphin converts it to RVZ if wanted.
 
+Tried with real No-Intro sets of NES and Super Nintendo (10,618 zips, 9.4 GB) on Docker Desktop
+for Windows.
+
+- Scans of large sets on slow volumes (a Windows drive in Docker, a network share) are much
+  faster: zips and CHDs are listed by several readers at once, and an archive that has not changed
+  is not opened again. A scan of the sets above went from 15 minutes to 12 seconds once the first
+  one was done.
+- The task shows how many files were found while it looks for them, and how many archives are
+  left, so a long scan no longer looks stuck. Task messages are translated.
+- Files to review now say why they are not recognised. A file with the name of a game but other
+  content shows what the DAT expects next to what it has, and whether the size differs (another
+  dump, often from a set of another date) or only the content (another revision, a hack, a
+  damaged file). Unidentified files are grouped as betas and demos, homebrew, pirates, hacks and
+  translations, test programs and others, each with what it means and what to do, such as
+  importing the official DAT when libretro-database leaves them out. The DAT they were compared
+  with is named.
+- A Windows path given as a library while Completist runs in Docker gets an explanation instead
+  of "the folder does not exist".
+
 ## 0.5.0 (unreleased)
 
 Organizing the files.

@@ -7,7 +7,7 @@ all: ui build
 
 # the interface, embedded by the Go build: run it first
 ui:
-	cd ui && (test -d node_modules || npm install) && npm run build
+	cd ui && (test -d node_modules || (test -f package-lock.json && npm ci) || npm install) && npm run build
 
 build:
 	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o build/completist ./cmd/completist

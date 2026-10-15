@@ -33,8 +33,14 @@ jobs:
 
       - name: Vet and test
         run: |
+          set -o pipefail
           go vet ./...
-          go test -race ./...
+          go test -race ./... 2>&1 | tee test.log
+
+      # the failures as annotations, which can be read without the logs
+      - name: Report what failed
+        if: failure()
+        run: scripts/report-test-failures.sh test.log
 
       - name: Build
         run: make build

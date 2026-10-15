@@ -1,0 +1,66 @@
+name: Maintenance
+
+# Run by hand from the Actions tab.
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: What to do
+        type: choice
+        options:
+          - lockfile
+          - repeat-tests
+        default: repeat-tests
+
+permissions:
+  contents: write
+
+jobs:
+  # writes ui/package-lock.json, so every build of the interface uses the same versions
+  lockfile:
+    if: inputs.task == 'lockfile'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Write the lockfile
+        working-directory: ui
+        run: |
+          npm install --package-lock-only --ignore-scripts
+          npm ci
+          npm run build
+      - name: Commit it
+        run: |
+          git config user.name "DeLFuS77"
+          git config user.email "27541756+DeLFuS77@users.noreply.github.com"
+          git add ui/package-lock.json
+          if git diff --cached --quiet; then echo "The lockfile is up to date."; exit 0; fi
+          git commit -m "Add the lockfile of the interface"
+          git push
+
+  # runs the tests several times, to catch a test that fails only now and then
+  repeat-tests:
+    if: inputs.task == 'repeat-tests'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Build the interface
+        working-directory: ui
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          npm run build
+      - name: Test five times
+        run: |
+          set -o pipefail
+          go test -race -count=5 ./... 2>&1 | tee test.log
+      - name: Report what failed
+        if: failure()
+        run: scripts/report-test-failures.sh test.log
